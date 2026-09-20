@@ -28,8 +28,8 @@ services:
       - manabi_postgres
     environment:
       - DATABASE_URL=postgresql://manabi_user:adb_jepang_secret_2026@manabi_postgres:5432/manabi_go_db
-      - NEXTAUTH_URL=http://localhost:7008
-      # Tambahkan variabel environment lain jika ada (misal NEXTAUTH_SECRET)
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
     volumes:
       # Mount folder uploads untuk persistensi file dari siswa
       - manabi_uploads:/app/public/uploads
