@@ -3,83 +3,127 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import fs from 'fs';
 import path from 'path';
-
-// Jika Anda sudah menginstal googleapis:
-// import { google } from 'googleapis';
+import { google } from 'googleapis';
 
 export async function POST(req: Request) {
   try {
     const session = await auth();
-    if (session?.user?.role !== 'GURU') {
+    if (session?.user?.role !== 'GURU' && session?.user?.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ message: 'Akses ditolak.' }, { status: 403 });
     }
 
-    // 1. Ambil semua TaskSubmission (Tugas) yang memiliki local driveFileUrl
+    // 1. Ambil Kredensial dari DB
+    const settings = await prisma.systemSetting.findMany({
+      where: { key: { in: ['gdrive_client_id', 'gdrive_client_secret', 'gdrive_refresh_token', 'gdrive_root_folder_id'] } }
+    });
+
+    const config = settings.reduce((acc: any, curr) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    }, {});
+
+    if (!config.gdrive_client_id || !config.gdrive_client_secret || !config.gdrive_refresh_token || !config.gdrive_root_folder_id) {
+      return NextResponse.json({ message: 'Google Drive belum dikonfigurasi di Pengaturan.' }, { status: 400 });
+    }
+
+    const oauth2Client = new google.auth.OAuth2(
+      config.gdrive_client_id,
+      config.gdrive_client_secret
+    );
+    oauth2Client.setCredentials({ refresh_token: config.gdrive_refresh_token });
+    const drive = google.drive({ version: 'v3', auth: oauth2Client });
+
+    // 2. Buat/Cari Folder Utama "Tugas Siswa" di dalam Root Folder
+    let tugasFolderId = '';
+    const folderRes = await drive.files.list({
+      q: `name='Tugas Siswa' and '${config.gdrive_root_folder_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: 'files(id, name)',
+    });
+
+    if (folderRes.data.files && folderRes.data.files.length > 0) {
+      tugasFolderId = folderRes.data.files[0].id || '';
+    } else {
+      const newFolder = await drive.files.create({
+        requestBody: {
+          name: 'Tugas Siswa',
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: [config.gdrive_root_folder_id],
+        },
+        fields: 'id',
+      });
+      tugasFolderId = newFolder.data.id || '';
+    }
+
+    // 3. Ambil semua TaskSubmission (Tugas) yang memiliki local driveFileUrl (belum diunggah ke GDrive)
     const submissions = await prisma.taskSubmission.findMany({
       where: {
         driveFileUrl: { startsWith: '/uploads/' }
       },
       include: {
         student: { include: { kelas: true } },
-        moduleItem: true,
+        moduleItem: { include: { module: true } },
       }
     });
 
     if (submissions.length === 0) {
-      return NextResponse.json({ message: 'Tidak ada tugas baru yang perlu disinkronisasi.' }, { status: 200 });
+      return NextResponse.json({ message: 'Semua tugas sudah tersinkronisasi ke Google Drive.' }, { status: 200 });
     }
-
-    // =========================================================================
-    // DUMMY LOGIC: Simulasi Google Drive API karena belum ada kredensial.
-    // =========================================================================
-    // Logika asli jika menggunakan kredensial:
-    /*
-    const authClient = new google.auth.GoogleAuth({
-      keyFile: path.join(process.cwd(), 'credentials.json'), // Kunci dari G-Cloud
-      scopes: ['https://www.googleapis.com/auth/drive.file'],
-    });
-    const drive = google.drive({ version: 'v3', auth: authClient });
-    */
 
     let syncedCount = 0;
 
     for (const sub of submissions) {
-      const kelasName = sub.student.kelas?.name || 'Kelas_Tidak_Diketahui';
-      const taskTitle = sub.moduleItem.title.replace(/[^a-zA-Z0-9 ]/g, '_');
+      const kelasName = sub.student.kelas?.name || 'Umum';
+      const moduleName = sub.moduleItem.module.title;
+      const taskTitle = sub.moduleItem.title;
       const studentName = sub.student.name;
+      
       const localFilePath = path.join(process.cwd(), 'public', sub.driveFileUrl);
 
       if (fs.existsSync(localFilePath)) {
-        // SIMULASI PROSES KE GOOGLE DRIVE
-        // 1. Cek/Buat Folder Drive: "Tugas_[kelasName]"
-        // 2. Cek/Buat Sub-folder Drive: "[taskTitle]"
-        // 3. Upload File:
-        /*
-        await drive.files.create({
+        // Penamaan file yang jelas untuk dibaca non-IT: [Nama Kelas] Nama Modul - Nama Tugas - Nama Siswa.ekstensi
+        const ext = path.extname(localFilePath);
+        const niceFileName = `[${kelasName}] ${moduleName} - ${taskTitle} - ${studentName}${ext}`;
+        
+        // Upload ke GDrive
+        const uploadedFile = await drive.files.create({
           requestBody: {
-            name: `[${studentName}]_${path.basename(localFilePath)}`,
-            parents: [subFolderId],
+            name: niceFileName,
+            parents: [tugasFolderId],
           },
           media: {
-            mimeType: 'application/octet-stream', // atau deteksi otomatis
             body: fs.createReadStream(localFilePath),
           },
+          fields: 'id, webViewLink',
         });
-        */
-        syncedCount++;
-        
-        // (Opsional) Update DB agar mengubah link lokal menjadi link G-Drive yang asli
-        // await prisma.taskSubmission.update({ ... driveFileUrl: realDriveLink })
+
+        if (uploadedFile.data.webViewLink) {
+          // Ubah Permissions agar bisa dilihat siapa saja yang punya link (jika diinginkan)
+          await drive.permissions.create({
+            fileId: uploadedFile.data.id || '',
+            requestBody: {
+              role: 'reader',
+              type: 'anyone',
+            },
+          });
+
+          // Update DB, ganti '/uploads/...' dengan link Google Drive
+          await prisma.taskSubmission.update({
+            where: { id: sub.id },
+            data: { driveFileUrl: uploadedFile.data.webViewLink }
+          });
+          
+          syncedCount++;
+        }
       }
     }
 
     return NextResponse.json({ 
-      message: `Sinkronisasi berhasil! (Mode Simulasi). ${syncedCount} berkas diproses ke dalam folder masing-masing kelas.`,
+      message: `Sinkronisasi berhasil! ${syncedCount} file telah diunggah dan dapat dilihat langsung di folder 'Tugas Siswa' di Google Drive Anda.`,
       syncedCount
     }, { status: 200 });
 
   } catch (error: any) {
     console.error('Drive Sync Error:', error);
-    return NextResponse.json({ message: 'Terjadi kegagalan saat mensinkronisasi ke Google Drive.' }, { status: 500 });
+    return NextResponse.json({ message: 'Terjadi kegagalan saat mensinkronisasi ke Google Drive: ' + error.message }, { status: 500 });
   }
 }
