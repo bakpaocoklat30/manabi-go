@@ -1,0 +1,235 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+}
+
+enum Role {
+  SUPER_ADMIN
+  GURU
+  SISWA
+}
+
+enum ContentType {
+  MOJI              // Huruf (Hiragana, Katakana, Kanji)
+  KOTOBA_TEKNIS     // Kosakata Umum & Industri STM ADB
+  BUNPOU            // Tata Bahasa
+  YOUTUBE_TUTORIAL  // Video Menulis & Panduan
+  TUGAS_MENULIS     // Upload Foto Tulisan ke GDrive
+  CHOUKAI           // Audio Percakapan
+  BUDAYA_KERJA      // Etos Kerja 5S & Aisatsu Jepang
+}
+
+model User {
+  id            String          @id @default(uuid())
+  identifier    String          @unique // NISN (Siswa), NIP/NUPTK (Guru), atau Username (Admin)
+  name          String
+  passwordHash  String
+  role          Role            @default(SISWA)
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relasi Siswa
+  kelasId       String?
+  kelas         Kelas?          @relation("UserKelas", fields: [kelasId], references: [id], onDelete: SetNull)
+  taughtClasses Kelas[]         @relation("GuruKelas")
+  quizAttempts  QuizAttempt[]
+  submissions   TaskSubmission[]
+  attendances   Attendance[]
+  moduleAccess  ModuleAccess[]
+
+  // Relasi Guru / Creator
+  createdModules LearningModule[]
+  gradedTasks    TaskSubmission[] @relation("TeacherGraded")
+
+  @@index([identifier])
+  @@index([role])
+}
+
+model Kelas {
+  id             String         @id @default(uuid())
+  name           String         @unique // Contoh: "XII TKR 1", "XI TKJ 2"
+  jurusan        String         // Contoh: "Teknik Kendaraan Ringan", "Teknik Komputer & Jaringan"
+  driveFolderUrl String?        // Link Shared Google Drive per kelas
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  students       User[]          @relation("UserKelas")
+  teachers       User[]          @relation("GuruKelas")
+  modules        ModuleKelas[]
+
+  @@index([name])
+}
+
+model LearningModule {
+  id          String         @id @default(uuid())
+  title       String         // Judul Bab / Materi
+  weekNumber  Int            // Pekan Pembelajaran ke-N
+  description String?
+  isPublished Boolean        @default(false)
+  isGamified  Boolean        @default(true)
+  authorId    String?
+  author      User?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deadlineAt  DateTime?      // Batas waktu pengumpulan tugas/kuis
+
+  items       ModuleItem[]
+  quizzes     Quiz[]
+  assignedTo  ModuleKelas[]
+  accessLogs  ModuleAccess[]
+
+  @@index([weekNumber])
+}
+
+model ModuleKelas {
+  moduleId    String
+  kelasId     String
+  
+  publishAt   DateTime?      // Kapan materi rilis untuk kelas ini
+  dueDate     DateTime?      // Tenggat waktu pengerjaan
+
+  assignedAt  DateTime       @default(now())
+
+  module      LearningModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  kelas       Kelas          @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+
+  @@id([moduleId, kelasId])
+}
+
+model ModuleItem {
+  id           String          @id @default(uuid())
+  moduleId     String
+  module       LearningModule  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  type         ContentType
+  title        String
+  orderIndex   Int             @default(0)
+  
+  // Konten Fleksibel Sesuai Tipe
+  bodyText     String?         @db.Text
+  youtubeUrl   String?         // URL Semat YouTube
+  audioUrl     String?         // URL File Audio Choukai
+  gdrivePrompt String?         // Instruksi & panduan upload link drive
+  dueHours     Int?            // Tenggat waktu pengumpulan (dalam jam) sejak materi dirilis ke kelas
+
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  submissions  TaskSubmission[]
+
+  @@index([moduleId, orderIndex])
+}
+
+model Quiz {
+  id               String         @id @default(uuid())
+  moduleId         String
+  module           LearningModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title            String
+  timeLimitMinutes Int            @default(15) // Timer kuis
+  passingScore     Int            @default(75) // KKM
+  randomizeOptions Boolean        @default(true) // Acak opsi jawaban
+  randomizeQuestions Boolean      @default(true) // Acak urutan pertanyaan
+  antiCheatMode    String         @default("WARNING") // OFF, WARNING, AUTO_SUBMIT
+  allowRetake      Boolean        @default(true)
+  maxRetakes       Int            @default(3)
+  orderIndex       Int            @default(99)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  questions        Question[]
+  attempts         QuizAttempt[]
+}
+
+model Question {
+  id           String    @id @default(uuid())
+  quizId       String
+  quiz         Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  questionText String    @db.Text
+  imageUrl     String?   @db.Text // Gambar untuk soal
+  explanation  String?   @db.Text // Pembahasan jawaban
+  orderIndex   Int       @default(0)
+
+  options      Option[]
+
+  @@index([quizId])
+}
+
+model Option {
+  id         String   @id @default(uuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  optionText String   @db.Text
+  isCorrect  Boolean  @default(false)
+
+  @@index([questionId])
+}
+
+model QuizAttempt {
+  id             String    @id @default(uuid())
+  quizId         String
+  quiz           Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  score          Float
+  totalCorrect   Int
+  totalQuestions Int
+  cheatCount     Int       @default(0) // Berapa kali terdeteksi pindah tab
+  startedAt      DateTime  @default(now())
+  completedAt    DateTime?
+
+  @@index([quizId, studentId])
+}
+
+model TaskSubmission {
+  id           String     @id @default(uuid())
+  moduleItemId String
+  moduleItem   ModuleItem @relation(fields: [moduleItemId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  driveFileUrl String     // Link file/foto tulisan di Google Drive
+  notes        String?    @db.Text // Catatan mandiri dari siswa
+  
+  // Penilaian Manual oleh Guru
+  grade        Float?
+  feedback     String?    @db.Text
+  gradedById   String?
+  gradedBy     User?      @relation("TeacherGraded", fields: [gradedById], references: [id], onDelete: SetNull)
+  gradedAt     DateTime?
+
+  submittedAt  DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([moduleItemId, studentId])
+  @@index([studentId])
+}
+
+model Attendance {
+  id        String   @id @default(uuid())
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date      DateTime @default(now())
+  status    String   @default("HADIR") // HADIR, SAKIT, IZIN
+
+  @@index([studentId, date])
+}
+
+model SystemSetting {
+  key   String @id
+  value String
+}
+
+model ModuleAccess {
+  id         String         @id @default(uuid())
+  studentId  String
+  student    User           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  moduleId   String
+  module     LearningModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  accessedAt DateTime       @default(now())
+  durationSeconds Int     @default(0)
+
+  @@unique([studentId, moduleId])
+}

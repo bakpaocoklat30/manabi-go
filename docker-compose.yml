@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  manabi_postgres:
+    image: postgres:16-alpine
+    container_name: manabi_go_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: manabi_user
+      POSTGRES_PASSWORD: adb_jepang_secret_2026
+      POSTGRES_DB: manabi_go_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - manabi_pgdata:/var/lib/postgresql/data
+    networks:
+      - manabi_local_net
+
+volumes:
+  manabi_pgdata:
+    driver: local
+
+networks:
+  manabi_local_net:
+    driver: bridge
