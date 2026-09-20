@@ -62,7 +62,8 @@ export default async function ProgressPage() {
           ) : (
             <div className="space-y-3">
               {submissions.map((sub) => (
-                <div key={sub.id} className="p-3 border rounded-xl border-[#E8E2D2] flex justify-between items-center bg-stone-50/50">
+                <div key={sub.id} className="p-3 border rounded-xl border-[#E8E2D2] bg-stone-50/50 flex flex-col gap-2">
+                  <div className="flex justify-between items-center w-full">
                   <div>
                     <p className="text-sm font-bold text-stone-800">{sub.moduleItem.title}</p>
                     <p className="text-xs text-stone-500">{sub.moduleItem.module.title}</p>
@@ -79,13 +80,14 @@ export default async function ProgressPage() {
                       </span>
                     )}
                   </div>
-                </div>
-                {sub.feedback && (
-                  <div className="mt-2 p-2.5 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800">
-                    <strong className="block mb-0.5 text-blue-900">Catatan Guru:</strong>
-                    {sub.feedback}
                   </div>
-                )}
+                  {sub.feedback && (
+                    <div className="mt-1 p-2.5 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800 w-full">
+                      <strong className="block mb-0.5 text-blue-900">Catatan Guru:</strong>
+                      {sub.feedback}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}

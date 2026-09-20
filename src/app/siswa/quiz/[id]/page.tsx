@@ -38,6 +38,9 @@ interface QuizData {
   timeLimitMinutes: number;
   passingScore: number;
   moduleId: string;
+  allowRetake: boolean;
+  maxRetakes: number;
+  attemptsCount: number;
   randomizeOptions?: boolean;
   randomizeQuestions?: boolean;
   antiCheatMode?: string;
