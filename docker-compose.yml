@@ -9,6 +9,7 @@ services:
       POSTGRES_USER: manabi_user
       POSTGRES_PASSWORD: adb_jepang_secret_2026
       POSTGRES_DB: manabi_go_db
+      TZ: Asia/Jakarta
     ports:
       - "5434:5432" # <-- Menggunakan port 5434 agar tidak bentrok dengan SI-Erin
     volumes:
@@ -30,6 +31,7 @@ services:
       - .env
     environment:
       - AUTH_TRUST_HOST=true
+      - TZ=Asia/Jakarta
     volumes:
       # Mount folder uploads untuk persistensi file dari siswa
       - manabi_uploads:/app/public/uploads
