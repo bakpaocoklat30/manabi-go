@@ -80,6 +80,12 @@ export default async function ProgressPage() {
                     )}
                   </div>
                 </div>
+                {sub.feedback && (
+                  <div className="mt-2 p-2.5 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800">
+                    <strong className="block mb-0.5 text-blue-900">Catatan Guru:</strong>
+                    {sub.feedback}
+                  </div>
+                )}
               ))}
             </div>
           )}
