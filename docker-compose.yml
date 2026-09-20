@@ -10,14 +10,36 @@ services:
       POSTGRES_PASSWORD: adb_jepang_secret_2026
       POSTGRES_DB: manabi_go_db
     ports:
-      - "5432:5432"
+      - "5434:5432" # <-- Menggunakan port 5434 agar tidak bentrok dengan SI-Erin
     volumes:
       - manabi_pgdata:/var/lib/postgresql/data
     networks:
       - manabi_local_net
 
+  manabi_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: manabi_go_app
+    restart: always
+    ports:
+      - "7008:3000" # <-- Menggunakan port 7008 agar tidak bentrok dengan SI-Erin (7007)
+    depends_on:
+      - manabi_postgres
+    environment:
+      - DATABASE_URL=postgresql://manabi_user:adb_jepang_secret_2026@manabi_postgres:5432/manabi_go_db
+      - NEXTAUTH_URL=http://localhost:7008
+      # Tambahkan variabel environment lain jika ada (misal NEXTAUTH_SECRET)
+    volumes:
+      # Mount folder uploads untuk persistensi file dari siswa
+      - manabi_uploads:/app/public/uploads
+    networks:
+      - manabi_local_net
+
 volumes:
   manabi_pgdata:
+    driver: local
+  manabi_uploads:
     driver: local
 
 networks:
