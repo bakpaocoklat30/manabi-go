@@ -26,10 +26,8 @@ services:
       - "7008:3000" # <-- Menggunakan port 7008 agar tidak bentrok dengan SI-Erin (7007)
     depends_on:
       - manabi_postgres
-    environment:
-      - DATABASE_URL=postgresql://manabi_user:adb_jepang_secret_2026@manabi_postgres:5432/manabi_go_db
-      - NEXTAUTH_URL=${NEXTAUTH_URL}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+    env_file:
+      - .env
     volumes:
       # Mount folder uploads untuk persistensi file dari siswa
       - manabi_uploads:/app/public/uploads
