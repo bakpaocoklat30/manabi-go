@@ -48,6 +48,18 @@ export async function POST(req: Request) {
       );
     }
 
+    const attemptsCount = await prisma.quizAttempt.count({
+      where: { quizId: quizId, studentId: userId }
+    });
+    
+    if (attemptsCount > 0 && quiz.allowRetake === false) {
+      return NextResponse.json({ message: 'Anda sudah mengerjakan kuis ini dan pengulangan tidak diizinkan.' }, { status: 403 });
+    }
+    
+    if (quiz.allowRetake && attemptsCount >= quiz.maxRetakes) {
+      return NextResponse.json({ message: `Batas maksimal pengulangan (${quiz.maxRetakes} kali) telah habis.` }, { status: 403 });
+    }
+
     const totalQuestions = quiz.questions.length;
     if (totalQuestions === 0) {
       return NextResponse.json(

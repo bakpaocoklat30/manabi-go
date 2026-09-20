@@ -279,17 +279,21 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
               >
                 Kembali ke Materi
               </Link>
+              {quizData.allowRetake && (quizData.attemptsCount < quizData.maxRetakes) && (
               <button
                 onClick={() => {
                   setResult(null);
                   setSelectedAnswers({});
                   setCurrentQuestionIndex(0);
+                  // Update local attempt count so they can't infinitely click it in same session
+                  setQuizData({...quizData, attemptsCount: quizData.attemptsCount + 1});
                 }}
                 className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-lg shadow-red-600/30 flex items-center gap-2"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Ulangi Pengerjaan</span>
+                <span>Ulangi Pengerjaan (Sisa: {quizData.maxRetakes - quizData.attemptsCount})</span>
               </button>
+            )}
             </div>
           </div>
 
