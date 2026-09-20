@@ -33,32 +33,34 @@ export async function POST(req: Request) {
     oauth2Client.setCredentials({ refresh_token: config.gdrive_refresh_token });
     const drive = google.drive({ version: 'v3', auth: oauth2Client });
 
-    // 2. Buat/Cari Folder Utama "Tugas Siswa" di dalam Root Folder
-    let tugasFolderId = '';
-    const folderRes = await drive.files.list({
-      q: `name='Tugas Siswa' and '${config.gdrive_root_folder_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-      fields: 'files(id, name)',
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true,
-      corpora: 'allDrives',
-    });
-
-    if (folderRes.data.files && folderRes.data.files.length > 0) {
-      tugasFolderId = folderRes.data.files[0].id || '';
-    } else {
+        // Helper untuk membuat/mencari folder
+    async function getOrCreateFolder(folderName: string, parentId: string) {
+      const q = `name='${folderName.replace(/'/g, "\'")}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+      const res = await drive.files.list({
+        q,
+        fields: 'files(id)',
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+        corpora: 'allDrives',
+      });
+      if (res.data.files && res.data.files.length > 0) {
+        return res.data.files[0].id || '';
+      }
       const newFolder = await drive.files.create({
         requestBody: {
-          name: 'Tugas Siswa',
+          name: folderName,
           mimeType: 'application/vnd.google-apps.folder',
-          parents: [config.gdrive_root_folder_id],
+          parents: [parentId],
         },
         fields: 'id',
         supportsAllDrives: true,
       });
-      tugasFolderId = newFolder.data.id || '';
+      return newFolder.data.id || '';
     }
 
-    // 3. Ambil semua TaskSubmission (Tugas) yang memiliki local driveFileUrl (belum diunggah ke GDrive)
+    const guruName = session?.user?.name || 'Guru_Tidak_Diketahui';
+
+    // 3. Ambil semua TaskSubmission yang belum tersinkron
     const submissions = await prisma.taskSubmission.findMany({
       where: {
         driveFileUrl: { startsWith: '/uploads/' }
@@ -74,25 +76,42 @@ export async function POST(req: Request) {
     }
 
     let syncedCount = 0;
+    
+    // Cache folder IDs to avoid redundant API calls
+    const folderCache: Record<string, string> = {};
 
     for (const sub of submissions) {
-      const kelasName = sub.student.kelas?.name || 'Umum';
-      const moduleName = sub.moduleItem.module.title;
+      const kelasName = sub.student.kelas?.name || 'Kelas_Umum';
       const taskTitle = sub.moduleItem.title;
       const studentName = sub.student.name;
       
       const localFilePath = path.join(process.cwd(), 'public', sub.driveFileUrl);
 
       if (fs.existsSync(localFilePath)) {
-        // Penamaan file yang jelas untuk dibaca non-IT: [Nama Kelas] Nama Modul - Nama Tugas - Nama Siswa.ekstensi
-        const ext = path.extname(localFilePath);
-        const niceFileName = `[${kelasName}] ${moduleName} - ${taskTitle} - ${studentName}${ext}`;
+        // Struktur: Guru -> Kelas -> Tugas
+        const guruCacheKey = `guru_${guruName}`;
+        if (!folderCache[guruCacheKey]) {
+          folderCache[guruCacheKey] = await getOrCreateFolder(guruName, config.gdrive_root_folder_id);
+        }
         
-        // Upload ke GDrive
+        const kelasCacheKey = `kelas_${guruName}_${kelasName}`;
+        if (!folderCache[kelasCacheKey]) {
+          folderCache[kelasCacheKey] = await getOrCreateFolder(kelasName, folderCache[guruCacheKey]);
+        }
+        
+        const taskCacheKey = `task_${kelasName}_${taskTitle}`;
+        if (!folderCache[taskCacheKey]) {
+          folderCache[taskCacheKey] = await getOrCreateFolder(taskTitle, folderCache[kelasCacheKey]);
+        }
+
+        const ext = path.extname(localFilePath);
+        const niceFileName = `${studentName}${ext}`;
+        
+        // Upload ke GDrive di dalam folder tugas
         const uploadedFile = await drive.files.create({
           requestBody: {
             name: niceFileName,
-            parents: [tugasFolderId],
+            parents: [folderCache[taskCacheKey]],
           },
           media: {
             body: fs.createReadStream(localFilePath),
@@ -102,7 +121,6 @@ export async function POST(req: Request) {
         });
 
         if (uploadedFile.data.webViewLink) {
-          // Ubah Permissions agar bisa dilihat siapa saja yang punya link (jika diinginkan)
           await drive.permissions.create({
             fileId: uploadedFile.data.id || '',
             requestBody: {
@@ -112,7 +130,6 @@ export async function POST(req: Request) {
             supportsAllDrives: true,
           });
 
-          // Update DB, ganti '/uploads/...' dengan link Google Drive
           await prisma.taskSubmission.update({
             where: { id: sub.id },
             data: { driveFileUrl: uploadedFile.data.webViewLink }
@@ -124,7 +141,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ 
-      message: `Sinkronisasi berhasil! ${syncedCount} file telah diunggah dan dapat dilihat langsung di folder 'Tugas Siswa' di Google Drive Anda.`,
+      message: `Sinkronisasi berhasil! ${syncedCount} file telah diunggah dengan struktur folder yang rapi di Google Drive.`,
       syncedCount
     }, { status: 200 });
 
