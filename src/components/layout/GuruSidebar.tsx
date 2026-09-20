@@ -163,7 +163,10 @@ export default function GuruSidebar({
         {/* Footer Sidebar */}
         <div className="p-4 border-t border-[#E8E2D2]">
           <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
+            onClick={async () => {
+              await signOut({ redirect: false });
+              window.location.href = '/login';
+            }}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-stone-500 hover:text-[#C62828] hover:bg-[#C62828]/10 border border-transparent hover:border-[#C62828]/20 transition-all duration-200"
           >
             <LogOut className="w-4 h-4" />
