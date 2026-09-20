@@ -17,6 +17,7 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [driveStatus, setDriveStatus] = useState<{ status: 'LOADING' | 'NOT_CONFIGURED' | 'CONNECTED' | 'ERROR', message?: string, quota?: any }>({ status: 'LOADING' });
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
   const [backups, setBackups] = useState<any[]>([]);
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
@@ -276,10 +277,14 @@ export default function SettingsPage() {
                       <button 
                         type="button"
                         onClick={() => handleRestore(b.id)}
-                        className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-[10px] font-bold rounded-lg flex items-center gap-1.5 transition-colors"
+                        disabled={restoringId === b.id}
+                        className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-[10px] font-bold rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50"
                       >
-                        <Download className="w-3 h-3" />
-                        Restore
+                        {restoringId === b.id ? (
+                          <><Loader2 className="w-3 h-3 animate-spin" /> Memproses...</>
+                        ) : (
+                          <><Download className="w-3 h-3" /> Restore</>
+                        )}
                       </button>
                     </div>
                   ))
