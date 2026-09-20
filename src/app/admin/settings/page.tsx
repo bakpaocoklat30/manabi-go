@@ -275,7 +275,7 @@ export default function SettingsPage() {
                       </div>
                       <button 
                         type="button"
-                        onClick={() => alert('Fitur Restore Database secara langsung memerlukan otorisasi tingkat lanjut demi keamanan (mencegah overwriting kelas yang sedang berjalan). Silakan unduh file zip ini melalui Google Drive Anda dan lakukan restore manual melalui pg_admin atau teknisi.')}
+                        onClick={() => handleRestore(b.id)}
                         className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-[10px] font-bold rounded-lg flex items-center gap-1.5 transition-colors"
                       >
                         <Download className="w-3 h-3" />
