@@ -71,6 +71,31 @@ export default function SettingsPage() {
   }, []);
 
   
+  const handleRestore = async (fileId: string) => {
+    if (!confirm('PERINGATAN KRITIKAL! Seluruh data (Nilai, Kuis, Siswa) akan dihapus dan diganti dengan isi backup ini.\n\nApakah Anda yakin ingin memulihkan database?')) return;
+    
+    setRestoringId(fileId);
+    try {
+      const res = await fetch('/api/admin/settings/backup/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId })
+      });
+      const json = await res.json();
+      
+      if (res.ok) {
+        alert('✅ ' + json.message + ' Halaman akan dimuat ulang.');
+        window.location.reload();
+      } else {
+        alert('❌ Gagal: ' + json.message);
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan jaringan.');
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
   const handleBackupNow = async () => {
     setIsBackingUp(true);
     setNotification(null);
