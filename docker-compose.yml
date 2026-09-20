@@ -28,6 +28,8 @@ services:
       - manabi_postgres
     env_file:
       - .env
+    environment:
+      - AUTH_TRUST_HOST=true
     volumes:
       # Mount folder uploads untuk persistensi file dari siswa
       - manabi_uploads:/app/public/uploads
