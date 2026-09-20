@@ -336,11 +336,31 @@ export default function GuruEvaluationsPage() {
                       
                       {/* Left: iframe preview */}
                       <div className="flex-1 rounded-xl overflow-hidden border border-slate-700 bg-slate-900 h-[60vh] min-h-[400px]">
-                        <iframe 
-                          src={getPreviewUrl(sub.driveFileUrl)} 
-                          className="w-full h-full"
-                          allow="autoplay"
-                        />
+                        {sub.driveFileUrl?.startsWith('/uploads/') ? (
+                          <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-slate-800">
+                            {sub.driveFileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                              <img src={sub.driveFileUrl} alt="Tugas" className="max-w-full max-h-full object-contain rounded-lg shadow-lg" />
+                            ) : sub.driveFileUrl.match(/\.pdf$/i) ? (
+                              <object data={sub.driveFileUrl} type="application/pdf" className="w-full h-full rounded-lg">
+                                <p className="text-white text-sm mt-4">Browser tidak mendukung preview PDF ini.</p>
+                              </object>
+                            ) : (
+                              <div className="text-center">
+                                <FileCheck2 className="w-16 h-16 text-slate-500 mx-auto mb-4" />
+                                <p className="text-white text-sm mb-4">Format file tidak dapat di-preview secara langsung.</p>
+                              </div>
+                            )}
+                            <a href={sub.driveFileUrl} target="_blank" rel="noopener noreferrer" className="mt-4 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-xl transition">
+                              Buka File Asli di Tab Baru
+                            </a>
+                          </div>
+                        ) : (
+                          <iframe 
+                            src={getPreviewUrl(sub.driveFileUrl)} 
+                            className="w-full h-full bg-white"
+                            allow="autoplay"
+                          />
+                        )}
                       </div>
 
                       {/* Right: Grading Form */}
