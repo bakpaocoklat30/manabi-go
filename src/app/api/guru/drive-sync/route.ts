@@ -38,6 +38,9 @@ export async function POST(req: Request) {
     const folderRes = await drive.files.list({
       q: `name='Tugas Siswa' and '${config.gdrive_root_folder_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
       fields: 'files(id, name)',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+      corpora: 'allDrives',
     });
 
     if (folderRes.data.files && folderRes.data.files.length > 0) {
@@ -50,6 +53,7 @@ export async function POST(req: Request) {
           parents: [config.gdrive_root_folder_id],
         },
         fields: 'id',
+        supportsAllDrives: true,
       });
       tugasFolderId = newFolder.data.id || '';
     }
@@ -94,6 +98,7 @@ export async function POST(req: Request) {
             body: fs.createReadStream(localFilePath),
           },
           fields: 'id, webViewLink',
+          supportsAllDrives: true,
         });
 
         if (uploadedFile.data.webViewLink) {
@@ -104,6 +109,7 @@ export async function POST(req: Request) {
               role: 'reader',
               type: 'anyone',
             },
+            supportsAllDrives: true,
           });
 
           // Update DB, ganti '/uploads/...' dengan link Google Drive
