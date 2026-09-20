@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FileCheck2, 
-  ExternalLink, 
+  ExternalLink,
+  HardDrive, 
   Search, 
   CheckCircle2, 
   Clock, 
@@ -156,6 +157,14 @@ export default function GuruEvaluationsPage() {
           </p>
         </div>
 
+        <button 
+          onClick={handleSyncDrive} 
+          disabled={isSyncing}
+          className="ml-auto inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition disabled:opacity-50"
+        >
+          {isSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <HardDrive className="w-4 h-4" />}
+          Sinkronisasi ke G-Drive
+        </button>
         {/* Toast Notifikasi */}
         {toastMessage && (
           <div className="p-3 bg-emerald-950/80 border border-emerald-700 text-emerald-200 text-xs font-bold rounded-xl flex items-center gap-2 animate-in fade-in">
