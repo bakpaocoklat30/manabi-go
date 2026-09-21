@@ -12,10 +12,14 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     const params = await context.params;
     const moduleId = params.id;
 
+    const { searchParams } = new URL(req.url);
+    const quizType = searchParams.get('type') || 'MULTIPLE_CHOICE';
+
     const module = await prisma.learningModule.findUnique({
       where: { id: moduleId, authorId: session.user.id },
       include: {
         quizzes: {
+          where: { quizType },
           include: {
             questions: {
               orderBy: { orderIndex: 'asc' },
@@ -53,6 +57,9 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     });
     if (!module) return NextResponse.json({ message: 'Modul tidak valid' }, { status: 403 });
 
+    const { searchParams } = new URL(req.url);
+    const quizType = searchParams.get('type') || 'MULTIPLE_CHOICE';
+
     const body = await req.json();
     const { title, timeLimitMinutes, passingScore, randomizeOptions, randomizeQuestions, antiCheatMode, allowRetake, maxRetakes, questions } = body;
     console.log('--- SAVE QUIZ PAYLOAD ---');
@@ -61,10 +68,11 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
     await prisma.$transaction(async (tx) => {
       // Cek apakah kuis sudah ada
-      let quiz = await tx.quiz.findFirst({ where: { moduleId } });
+      let quiz = await tx.quiz.findFirst({ where: { moduleId, quizType } });
       
       const quizData = {
-        title: title || 'Kuis Evaluasi',
+        title: title || (quizType === 'ESSAY' ? 'Kuis Isian Singkat' : 'Kuis Evaluasi'),
+        quizType,
         timeLimitMinutes: Number(timeLimitMinutes) || 15,
         passingScore: Number(passingScore) || 75,
         randomizeOptions: randomizeOptions !== false,
@@ -96,6 +104,8 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
           const newQ = await tx.question.create({
             data: {
               quizId: quiz.id,
+              type: q.type || 'MULTIPLE_CHOICE',
+              referenceAnswer: q.referenceAnswer || null,
               questionText: q.questionText,
               imageUrl: q.imageUrl || null,
               explanation: q.explanation || null,

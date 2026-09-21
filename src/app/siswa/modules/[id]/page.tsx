@@ -76,10 +76,7 @@ export default async function SiswaModuleDetailPage({ params }: ModulePageProps)
   const defaultFolderUrl =
     learningModule.assignedTo[0]?.kelas.driveFolderUrl || 'https://drive.google.com';
 
-  const quiz = learningModule.quizzes[0];
-  const bestAttempt = quiz?.attempts[0];
-  const attemptsCount = quiz?.attempts?.length || 0;
-  const isRetakeBlocked = attemptsCount > 0 && (quiz?.allowRetake === false || attemptsCount >= (quiz?.maxRetakes || 3));
+  // We will map over all quizzes instead of just taking the first one.
 
   // Access Tracking untuk Delay Content
   let access = await prisma.moduleAccess.findUnique({
@@ -134,9 +131,13 @@ export default async function SiswaModuleDetailPage({ params }: ModulePageProps)
 
       {/* Konten Materi Berurutan */}
       <div className="space-y-6">
-        {learningModule.items.map((item, index) => {
-          return (
-            <DelayedContent key={item.id} delayMinutes={item.delayMinutes || 0} accessStartTime={accessStartTime}>
+        // Hitung kumulatif delay untuk seluruh item (agar Jeda adalah jeda dari konten sebelumnya)
+        {(() => {
+          let cumulativeDelay = 0;
+          return learningModule.items.map((item, index) => {
+            cumulativeDelay += (item.delayMinutes || 0);
+            return (
+              <DelayedContent key={item.id} delayMinutes={cumulativeDelay} accessStartTime={accessStartTime}>
             <section
               key={item.id}
               className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-4"
@@ -200,59 +201,75 @@ export default async function SiswaModuleDetailPage({ params }: ModulePageProps)
                       'Tuliskan materi di atas pada kertas kotak, lalu upload foto hasil tugas kamu ke folder Shared Google Drive berikut.'
                     }
                     existingSubmission={item.submissions[0] || null}
+                    maxFiles={item.maxFiles || 1}
+                    studentName={session?.user?.name || 'Siswa'}
                   />
                 </div>
               )}
             </section>
-            </DelayedContent>
-          );
-        })}
+              </DelayedContent>
+            );
+          });
+        })()}
       </div>
 
       {/* Bagian Evaluasi Kuis Berbatas Waktu */}
-      {quiz && (
-        <div className="bg-gradient-to-r from-red-950/50 via-slate-900 to-slate-900 border border-red-800/40 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-600 text-white">
-                Evaluasi Mandiri
-              </span>
-              <span className="text-xs text-slate-400 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
-                Batas Waktu: {quiz.timeLimitMinutes} Menit
-              </span>
+            {learningModule.quizzes.map((q, index) => {
+        const bestAttempt = q.attempts[0];
+        const attemptsCount = q.attempts.length || 0;
+        const isRetakeBlocked = attemptsCount > 0 && (q.allowRetake === false || attemptsCount >= (q.maxRetakes || 3));
+        const quizDelay = learningModule.items.reduce((acc, i) => acc + (i.delayMinutes || 0), 0) + (q.delayMinutes || 0) + (index * 2); // Add a small cumulative buffer for multiple quizzes
+
+        return (
+          <DelayedContent 
+            key={q.id}
+            delayMinutes={quizDelay} 
+            accessStartTime={accessStartTime}
+          >
+          <div className="bg-gradient-to-r from-red-950/50 via-slate-900 to-slate-900 border border-red-800/40 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl mb-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white ${q.quizType === 'ESSAY' ? 'bg-indigo-600' : 'bg-red-600'}`}>
+                  {q.quizType === 'ESSAY' ? 'Kuis Isian (AI)' : 'Kuis Pilihan Ganda'}
+                </span>
+                <span className="text-xs text-slate-400 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  Batas Waktu: {q.timeLimitMinutes} Menit
+                </span>
+              </div>
+              <h3 className="text-xl font-bold text-white">{q.title}</h3>
+              <p className="text-xs text-slate-300">
+                Passing Grade (KKM): {q.passingScore} Poin. Kerjakan dengan teliti.
+              </p>
             </div>
-            <h3 className="text-xl font-bold text-white">{quiz.title}</h3>
-            <p className="text-xs text-slate-300">
-              Passing Grade (KKM): {quiz.passingScore} Poin. Kerjakan dengan teliti untuk menguji penguasaan materi pekan ini.
-            </p>
-          </div>
 
-          <div className="flex flex-col sm:items-end gap-2 w-full sm:w-auto">
-            {bestAttempt ? (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs font-bold">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Skor Terbaik: {bestAttempt.score} / 100</span>
-              </div>
-            ) : null}
+            <div className="flex flex-col sm:items-end gap-2 w-full sm:w-auto">
+              {bestAttempt ? (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs font-bold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Skor Terbaik: {bestAttempt.score} / 100</span>
+                </div>
+              ) : null}
 
-            {isRetakeBlocked ? (
-              <div className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-slate-800 text-slate-400 text-xs font-bold cursor-not-allowed w-full sm:w-auto border border-slate-700" title="Batas maksimal pengulangan telah habis">
-                <FileEdit className="w-4 h-4 opacity-50" />
-                <span>Pengulangan Ditutup</span>
-              </div>
-            ) : (
-              <Link
-                href={`/siswa/quiz/${quiz.id}`}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-lg shadow-red-600/30 w-full sm:w-auto"
-              >
-                <FileEdit className="w-4 h-4" />
-                <span>{bestAttempt ? 'Kerjakan Ulang Kuis' : 'Mulai Uji Pemahaman'}</span>
-              </Link>
-            )}
+              {isRetakeBlocked ? (
+                <div className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-slate-800 text-slate-400 text-xs font-bold cursor-not-allowed w-full sm:w-auto border border-slate-700" title="Batas maksimal pengulangan telah habis">
+                  <FileEdit className="w-4 h-4 opacity-50" />
+                  <span>Pengulangan Ditutup</span>
+                </div>
+              ) : (
+                <Link
+                  href={`/siswa/quiz/${q.id}`}
+                  className={`inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-white text-xs font-bold transition shadow-lg w-full sm:w-auto ${q.quizType === 'ESSAY' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30' : 'bg-red-600 hover:bg-red-700 shadow-red-600/30'}`}
+                >
+                  <FileEdit className="w-4 h-4" />
+                  <span>{bestAttempt ? 'Kerjakan Ulang Kuis' : 'Mulai Uji Pemahaman'}</span>
+                </Link>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+          </DelayedContent>
+        );
+      })}
     </div>
   );
 }

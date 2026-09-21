@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
   ArrowLeft, Plus, Edit, Trash2, Loader2, PlaySquare, AlignLeft, Headphones, PenTool, Factory, JapaneseYen, CheckCircle2, AlertCircle, CheckSquare, Clock
-, Pencil } from 'lucide-react';
+, Pencil, Save } from 'lucide-react';
 import YoutubeEmbed from '@/components/shared/YoutubeEmbed';
 
 interface ModuleData {
@@ -26,6 +26,7 @@ interface ModuleItemData {
   gdrivePrompt: string | null;
   dueHours: number | null;
   delayMinutes: number;
+  customTypeLabel: string | null;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -49,6 +50,37 @@ const getTypeIcon = (type: string) => {
   }
 };
 
+function DelayInputRow({ item, onChangeDelay }: { item: any, onChangeDelay: (id: string, val: number) => void }) {
+  const [val, setVal] = React.useState(item.delayMinutes || 0);
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVal = Number(e.target.value);
+    setVal(newVal);
+    onChangeDelay(item.id, newVal);
+  };
+
+  return (
+    <div className="flex items-center justify-center -my-3 relative z-10 pb-4">
+      <div className="bg-white border border-[#E8E2D2] px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-md">
+        <div className="bg-emerald-100 p-1.5 rounded-full">
+          <Clock className="w-4 h-4 text-emerald-600" />
+        </div>
+        <span className="text-stone-600 font-bold text-sm hidden sm:inline">Jeda Penampilan:</span>
+        <div className="flex items-center gap-2">
+          <input 
+            type="number" 
+            min="0"
+            value={val}
+            onChange={handleChange}
+            className="w-20 h-9 text-center bg-stone-50 border border-stone-300 rounded-xl outline-none focus:border-emerald-500 font-bold text-stone-800 text-sm"
+          />
+          <span className="text-xs text-stone-500 font-bold mr-1">Menit</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ModuleEditorPage() {
   const params = useParams();
   const router = useRouter();
@@ -67,6 +99,8 @@ export default function ModuleEditorPage() {
   // Form State
   const [formType, setFormType] = useState('MOJI');
   const [formTitle, setFormTitle] = useState('');
+  const [maxFiles, setMaxFiles] = useState(1);
+  const [formCustomTypeLabel, setFormCustomTypeLabel] = useState('');
   const [formBodyText, setFormBodyText] = useState('');
   const [formYoutubeUrl, setFormYoutubeUrl] = useState('');
   const [formAudioUrl, setFormAudioUrl] = useState('');
@@ -111,6 +145,8 @@ export default function ModuleEditorPage() {
     setIsEditing(false);
     setFormType(type);
     setFormTitle('');
+    setFormCustomTypeLabel('');
+    setFormCustomTypeLabel('');
     setFormBodyText('');
     setFormYoutubeUrl('');
     setFormAudioUrl('');
@@ -121,6 +157,50 @@ export default function ModuleEditorPage() {
     setShowModal(true);
   };
   
+
+  
+  const [isBatchSaving, setIsBatchSaving] = useState(false);
+
+  const handleDelayChange = (itemId: string, newDelay: number) => {
+    setCombinedItems(prev => prev.map(item => item.id === itemId ? { ...item, delayMinutes: newDelay } : item));
+  };
+
+  const handleBatchSave = async () => {
+    setIsBatchSaving(true);
+    try {
+      const payload = combinedItems.map(i => ({ id: i.id, type: i.type, orderIndex: i.orderIndex, delayMinutes: i.delayMinutes }));
+      const res = await fetch(`/api/guru/modules/${moduleId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'BATCH_UPDATE', items: payload })
+      });
+      if (res.ok) {
+        setNotification({ type: 'success', message: 'Urutan dan Jeda berhasil disimpan!' });
+        loadData();
+      }
+    } catch(e) { console.error(e); }
+    setIsBatchSaving(false);
+  };
+
+  const handleUpdateDelay = async (itemId: string, type: string, newDelay: number) => {
+    try {
+      const isQuiz = type === 'QUIZ';
+      const endpoint = isQuiz ? `/api/guru/quizzes/${itemId}` : `/api/guru/modules/${moduleId}/items`;
+      const body = isQuiz ? { delayMinutes: newDelay } : { action: 'UPDATE', itemId, type, delayMinutes: newDelay };
+      
+      // We need to fetch current item to keep its other data intact for ModuleItem.
+      // Wait, UPDATE action in items route requires all fields if we don't handle partial updates.
+      // Let's create a specific QUICK_UPDATE_DELAY action in the items route instead!
+      const res = await fetch(`/api/guru/modules/${moduleId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'UPDATE_DELAY', itemId, isQuiz, delayMinutes: newDelay })
+      });
+      if (res.ok) {
+        loadData(); // reload
+      }
+    } catch(e) { console.error(e); }
+  };
 
   const moveItem = async (index: number, direction: 'UP' | 'DOWN') => {
     const newCombined = [...combinedItems];
@@ -151,6 +231,7 @@ export default function ModuleEditorPage() {
     setFormType('MOJI');
     setFormTitle('');
     setFormBodyText('');
+    setMaxFiles(1);
     setFormYoutubeUrl('');
     setFormAudioUrl('');
     setFormGdrivePrompt('');
@@ -164,6 +245,7 @@ export default function ModuleEditorPage() {
     setEditId(item.id);
     setFormType(item.type);
     setFormTitle(item.title);
+    setFormCustomTypeLabel(item.customTypeLabel || '');
     setFormBodyText(item.bodyText || '');
     setFormDueHours(item.dueHours ? String(item.dueHours) : '');
     setFormDelayMinutes(item.delayMinutes ? String(item.delayMinutes) : '');
@@ -181,10 +263,13 @@ export default function ModuleEditorPage() {
     try {
       const action = isEditing ? 'UPDATE' : 'CREATE';
       const body = {
-        action, itemId: editId, type: formType, title: formTitle,
-        bodyText: formBodyText, youtubeUrl: formYoutubeUrl, 
+        action, itemId: editId, type: formType, title: formTitle, customTypeLabel: formCustomTypeLabel,
+        bodyText: formBodyText,
+          maxFiles: maxFiles, youtubeUrl: formYoutubeUrl, 
         audioUrl: formAudioUrl, gdrivePrompt: formGdrivePrompt,
-        orderIndex: formOrderIndex
+        orderIndex: formOrderIndex,
+        dueHours: formDueHours ? Number(formDueHours) : null,
+        delayMinutes: formDelayMinutes ? Number(formDelayMinutes) : 0,
       };
       const res = await fetch(`/api/guru/modules/${moduleId}/items`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
@@ -248,9 +333,13 @@ export default function ModuleEditorPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-1">Tipe Konten</label>
-                  <div className="w-full px-3 py-2 bg-stone-100 border border-[#E8E2D2] rounded-xl text-stone-600 text-xs font-bold">
-                    {TYPE_LABELS[formType] || formType}
-                  </div>
+                  <input 
+                    type="text" 
+                    value={formCustomTypeLabel} 
+                    onChange={(e) => setFormCustomTypeLabel(e.target.value)} 
+                    placeholder={TYPE_LABELS[formType] || formType}
+                    className="w-full px-3 py-2 bg-white border border-[#E8E2D2] rounded-xl text-stone-900 text-xs font-bold focus:outline-none focus:border-blue-500" 
+                  />
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-1">Urutan Tampil (Ke-)</label>
@@ -282,6 +371,11 @@ export default function ModuleEditorPage() {
                   <div>
                     <label className="block text-[11px] font-semibold text-amber-600 uppercase mb-1">Instruksi Tugas Siswa (Prompt)</label>
                     <textarea rows={3} required value={formGdrivePrompt} onChange={(e) => setFormGdrivePrompt(e.target.value)} placeholder="Tuliskan huruf di buku kotak, lalu foto dan unggah..." className="w-full px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-stone-900 text-xs focus:outline-none focus:border-amber-500" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-amber-600 uppercase mb-1">Maksimal Jumlah Foto yang Bisa Diupload</label>
+                    <input type="number" min={1} max={10} value={maxFiles} onChange={e => setMaxFiles(Number(e.target.value))} className="w-full pl-3 pr-10 py-2 bg-amber-50 border border-amber-200 rounded-xl text-stone-900 text-xs focus:outline-none focus:border-amber-500" />
+                    <p className="text-[10px] text-amber-700/70 mt-1">Siswa akan dipaksa memfoto langsung dari kamera (anti-cheat) sebanyak maksimal batas ini.</p>
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-amber-600 uppercase mb-1">Durasi Pengerjaan (Opsional)</label>
@@ -350,7 +444,9 @@ export default function ModuleEditorPage() {
                     )}
                     {/* Default fallback for preview badge */}
                     {!['BUDAYA_KERJA','KOTOBA_TEKNIS','YOUTUBE_TUTORIAL','TUGAS_MENULIS'].includes(formType) && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">{TYPE_LABELS[formType]}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">
+                        {formCustomTypeLabel || TYPE_LABELS[formType]}
+                      </span>
                     )}
                   </div>
                   <h3 className="text-base sm:text-lg font-bold text-white mt-1 break-words">
@@ -412,7 +508,17 @@ return (
             <p className="text-xs text-stone-500 mt-1">Pekan Pembelajaran ke-{moduleData?.weekNumber}</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={handleBatchSave}
+          disabled={isBatchSaving}
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-bold text-xs rounded-xl shadow-sm transition-all"
+        >
+          {isBatchSaving ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Save className="w-4 h-4 text-emerald-600" />}
+          <span>Simpan Susunan & Jeda</span>
+        </button>
+      </div>
+      
+      <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => openCreateSpecific('BUNPOU')}
             className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-[11px] font-bold rounded-xl transition-all shadow-sm"
@@ -435,14 +541,20 @@ return (
             <span>Buat Tugas Praktik</span>
           </button>
           <Link
-            href={`/guru/builder/${moduleId}/quiz`}
+            href={`/guru/builder/${moduleId}/quiz?type=MULTIPLE_CHOICE`}
             className="inline-flex items-center gap-1.5 px-3 py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 text-[11px] font-bold rounded-xl transition-all shadow-sm"
           >
             <CheckSquare className="w-3.5 h-3.5" />
             <span>Kelola Kuis Ganda</span>
           </Link>
+          <Link
+            href={`/guru/builder/${moduleId}/quiz?type=ESSAY`}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-[11px] font-bold rounded-xl transition-all shadow-sm"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            <span>Buat Kuis Isian (AI)</span>
+          </Link>
         </div>
-      </div>
 
       {notification && (
         <div className={`p-4 rounded-xl border flex items-center gap-2.5 text-xs animate-in fade-in ${
@@ -464,13 +576,8 @@ return (
       ) : (
         <div className="space-y-4">
           {combinedItems.map((item, index) => {
-            const delayIndicator = index > 0 && item.delayMinutes > 0 ? (
-              <div className="flex items-center justify-center -my-2 relative z-10 pointer-events-none pb-2">
-                <div className="bg-emerald-50 text-emerald-600 border border-emerald-200 px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow-sm">
-                  <Clock className="w-3.5 h-3.5" />
-                  Jeda: {item.delayMinutes} Menit sebelum materi ini
-                </div>
-              </div>
+            const delayIndicator = index > 0 ? (
+              <DelayInputRow item={item} onChangeDelay={handleDelayChange} />
             ) : null;
 
             if (item.type === 'QUIZ') {
@@ -487,7 +594,9 @@ return (
                   </div>
                   <div className="flex-1 mt-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-purple-200 text-purple-700 uppercase tracking-wider">KUIS GANDA</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${item.quizType === 'ESSAY' ? 'bg-emerald-200 text-emerald-700' : 'bg-purple-200 text-purple-700'}`}>
+                        {item.quizType === 'ESSAY' ? 'KUIS ISIAN (AI)' : 'KUIS GANDA'}
+                      </span>
                       <span className="text-xs font-bold text-stone-500">Durasi: {item.timeLimitMinutes} Menit</span>
                     </div>
                     <h3 className="text-sm font-bold text-stone-900 leading-snug">{item.title}</h3>
@@ -502,7 +611,9 @@ return (
               );
             }
             return (
-              <div key={item.id} className="bg-white border border-[#E8E2D2] rounded-2xl p-5 shadow-sm flex items-start gap-4 group hover:border-blue-300 transition">
+              <React.Fragment key={item.id}>
+                {delayIndicator}
+                <div className="bg-white border border-[#E8E2D2] rounded-2xl p-5 shadow-sm flex items-start gap-4 group hover:border-blue-300 transition">
                 <div className="flex flex-col items-center gap-1">
                   <button onClick={() => moveItem(index, 'UP')} disabled={index === 0} className="text-stone-400 hover:text-stone-700 disabled:opacity-30">▲</button>
                   <div className="w-8 h-8 rounded-full bg-stone-50 border border-[#E8E2D2] flex items-center justify-center font-mono font-bold text-stone-500 text-sm">
@@ -544,6 +655,7 @@ return (
                   </button>
                 </div>
               </div>
+              </React.Fragment>
             );
           })}
         </div>

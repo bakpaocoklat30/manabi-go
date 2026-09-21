@@ -18,6 +18,7 @@ import {
 interface SubmissionItem {
   id: string;
   driveFileUrl: string;
+  fileUrls: string | null;
   notes: string | null;
   grade: number | null;
   feedback: string | null;

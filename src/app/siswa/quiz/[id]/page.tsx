@@ -26,6 +26,7 @@ interface Option {
 
 interface Question {
   id: string;
+  type: string;
   questionText: string;
   imageUrl?: string;
   orderIndex: number;
@@ -146,7 +147,8 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
     const currentAnswers = selectedAnswersRef.current;
     const formattedAnswers = quizData.questions.map((q) => ({
       questionId: q.id,
-      selectedOptionId: currentAnswers[q.id] || '',
+      selectedOptionId: quizData.quizType === 'ESSAY' ? null : (currentAnswers[q.id] || ''),
+      answerText: quizData.quizType === 'ESSAY' ? (currentAnswers[q.id] || '') : null,
     }));
 
     try {
@@ -343,6 +345,12 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
                     {item.explanation}
                   </div>
                 )}
+                {quizData.quizType === 'ESSAY' && (
+                  <div className="mt-3 p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-900/50 text-xs text-indigo-300 leading-relaxed">
+                    <span className="font-bold text-indigo-400 block mb-1">Jawaban Anda:</span>
+                    {item.studentAnswerText || 'Tidak dijawab'}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -376,6 +384,7 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
                 );
               })}
             </div>
+            )}
           </div>
 
           {/* Kartu Pertanyaan Aktif */}
@@ -384,7 +393,7 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
               <span className="text-xs font-bold text-red-400 uppercase tracking-wider">
                 Pertanyaan {currentQuestionIndex + 1} dari {totalQuestions}
               </span>
-              <span className="text-xs text-slate-500 font-medium">Pilihan Ganda</span>
+              <span className="text-xs text-slate-500 font-medium">{quizData.quizType === 'ESSAY' ? 'Isian Singkat' : 'Pilihan Ganda'}</span>
             </div>
 
             {currentQuestion.imageUrl && (
@@ -394,7 +403,16 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
               {currentQuestion.questionText}
             </p>
 
-            {/* Opsi Jawaban */}
+            {/* Input Jawaban */}
+            {quizData.quizType === 'ESSAY' ? (
+              <textarea
+                rows={5}
+                value={selectedAnswers[currentQuestion.id] || ''}
+                onChange={(e) => handleSelectOption(currentQuestion.id, e.target.value)}
+                placeholder="Ketik jawaban Anda di sini..."
+                className="w-full px-4 py-3 bg-slate-950/70 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
+              />
+            ) : (
             <div className="space-y-3">
               {currentQuestion.options.map((opt) => {
                 const isSelected = selectedAnswers[currentQuestion.id] === opt.id;

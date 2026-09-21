@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, Loader2, CheckCircle2, AlertCircle, Cloud, Database, ExternalLink, FileArchive, Download } from 'lucide-react';
+import { Settings, Save, Loader2, CheckCircle2, AlertCircle, Cloud, Database, ExternalLink, FileArchive, Download, Bot } from 'lucide-react';
 
 export default function SettingsPage() {
   const [formData, setFormData] = useState({
@@ -10,7 +10,9 @@ export default function SettingsPage() {
     gdrive_refresh_token: '',
     gdrive_root_folder_id: '',
     auto_backup_schedule: 'manual',
-    api_sudarmono: ''
+    api_sudarmono: '',
+    ai_grading_prompt: '',
+    gemini_api_key: ''
   });
   
   const [isLoading, setIsLoading] = useState(true);
@@ -55,6 +57,8 @@ export default function SettingsPage() {
           gdrive_root_folder_id: settings.gdrive_root_folder_id || '',
           auto_backup_schedule: settings.auto_backup_schedule || 'manual',
           api_sudarmono: settings.api_sudarmono || '',
+          ai_grading_prompt: settings.ai_grading_prompt || '',
+          gemini_api_key: settings.gemini_api_key || '',
         });
       }
     } catch (e) {
@@ -111,7 +115,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
@@ -318,6 +322,48 @@ export default function SettingsPage() {
             </div>
           </div>
           
+          {/* Card: AI Grading Agent */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                <Bot className="w-4 h-4 text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">Agent AI Korektor Kuis Isian</h3>
+                <p className="text-[10px] text-slate-500">Sistem prompt (instruksi) yang digunakan Gemini untuk menilai jawaban essay/isian singkat siswa.</p>
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-2">Sistem Prompt Utama</label>
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Gemini API Key</label>
+                <input 
+                  type="password"
+                  name="gemini_api_key"
+                  value={formData.gemini_api_key || ''}
+                  onChange={handleChange}
+                  placeholder="AIzaSy..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:outline-none focus:border-indigo-500"
+                />
+                <p className="text-[10px] text-slate-500 mt-1.5">Kunci rahasia dari Google AI Studio untuk mengaktifkan fitur koreksi otomatis.</p>
+              </div>
+
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 mt-4">Sistem Prompt (Koreksi Otomatis AI)</label>
+              <textarea 
+                rows={4}
+                name="ai_grading_prompt" 
+                value={formData.ai_grading_prompt} 
+                onChange={handleChange} 
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs font-mono focus:outline-none focus:border-indigo-500" 
+                placeholder="Anda adalah guru bahasa Jepang. Tugas Anda adalah mengoreksi..." 
+              />
+              <p className="text-[9px] text-slate-400 mt-2">
+                <strong>Catatan:</strong> Gunakan variabel <code>{"{{reference}}"}</code> untuk Kunci Jawaban Referensi dan <code>{"{{studentText}}"}</code> untuk Jawaban Siswa. AI HANYA boleh menjawab <code>TRUE</code> atau <code>FALSE</code>.
+              </p>
+            </div>
+          </div>
+
           {/* Card: Sudarmono API */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-6">

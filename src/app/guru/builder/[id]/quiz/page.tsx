@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   ArrowLeft, Plus, Trash2, Loader2, Save, CheckCircle2, AlertCircle, HelpCircle
@@ -13,6 +13,8 @@ interface Option {
 }
 
 interface Question {
+  type?: string;
+  referenceAnswer?: string | null;
   questionText: string;
   imageUrl?: string;
   explanation: string;
@@ -22,6 +24,8 @@ interface Question {
 export default function QuizBuilderPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const quizType = searchParams.get('type') || 'MULTIPLE_CHOICE';
   const moduleId = params.id as string;
 
   const [isLoading, setIsLoading] = useState(true);
@@ -41,7 +45,7 @@ export default function QuizBuilderPage() {
   useEffect(() => {
     const loadQuiz = async () => {
       try {
-        const res = await fetch(`/api/guru/modules/${moduleId}/quiz`, { cache: 'no-store' });
+        const res = await fetch(`/api/guru/modules/${moduleId}/quiz?type=${quizType}`, { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
           if (data.quiz) {
@@ -57,6 +61,7 @@ export default function QuizBuilderPage() {
           } else {
             // Default 1 soal kosong jika belum ada
             setQuestions([{
+              type: quizType,
               questionText: '',
               imageUrl: '',
               explanation: '',
@@ -82,6 +87,7 @@ export default function QuizBuilderPage() {
     setQuestions([
       ...questions,
       {
+        type: quizType,
         questionText: '',
         imageUrl: '',
         explanation: '',
@@ -149,7 +155,7 @@ export default function QuizBuilderPage() {
     setIsSubmitting(true);
     setNotification(null);
     try {
-      const res = await fetch(`/api/guru/modules/${moduleId}/quiz`, {
+      const res = await fetch(`/api/guru/modules/${moduleId}/quiz?type=${quizType}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -168,7 +174,7 @@ export default function QuizBuilderPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
       
-      setNotification({ type: 'success', message: 'Kuis Pilihan Ganda berhasil disimpan!' });
+      setNotification({ type: 'success', message: 'Kuis berhasil disimpan!' });
     } catch (err: any) {
       setNotification({ type: 'error', message: err.message || 'Gagal menyimpan kuis.' });
     } finally {
@@ -190,7 +196,7 @@ export default function QuizBuilderPage() {
           </Link>
           <div>
             <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
-              Kuis Pilihan Ganda
+              {quizType === 'ESSAY' ? 'Kuis Isian Singkat (AI)' : 'Kuis Pilihan Ganda'}
             </h2>
             <p className="text-xs text-stone-500 mt-1">Buat soal evaluasi untuk mengukur pemahaman siswa.</p>
           </div>
@@ -369,29 +375,46 @@ export default function QuizBuilderPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-2">Pilihan Ganda (Tandai yang Benar)</label>
-                <div className="space-y-2">
-                  {q.options.map((opt, optIndex) => (
-                    <div key={optIndex} className={`flex items-center gap-3 p-2 rounded-xl border ${opt.isCorrect ? 'border-emerald-400 bg-emerald-50' : 'border-[#E8E2D2] bg-white'}`}>
-                      <input 
-                        type="radio" 
-                        name={`correct-${qIndex}`}
-                        checked={opt.isCorrect}
-                        onChange={() => setCorrectOption(qIndex, optIndex)}
-                        className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
-                      />
-                      <input 
-                        type="text" 
-                        value={opt.optionText || ''}
-                        onChange={e => updateOptionText(qIndex, optIndex, e.target.value)}
-                        placeholder={`Pilihan ${String.fromCharCode(65 + optIndex)}`}
-                        className="flex-1 bg-transparent border-none text-xs focus:ring-0 text-stone-900 outline-none"
-                      />
-                    </div>
-                  ))}
+              
+
+              {(!q.type || q.type === 'MULTIPLE_CHOICE') && (
+                <div>
+                  <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-2">Pilihan Ganda (Tandai yang Benar)</label>
+                  <div className="space-y-2">
+                    {q.options.map((opt, optIndex) => (
+                      <div key={optIndex} className={`flex items-center gap-3 p-2 rounded-xl border ${opt.isCorrect ? 'border-emerald-400 bg-emerald-50' : 'border-[#E8E2D2] bg-white'}`}>
+                        <input 
+                          type="radio" 
+                          name={`correct-${qIndex}`}
+                          checked={opt.isCorrect}
+                          onChange={() => setCorrectOption(qIndex, optIndex)}
+                          className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <input 
+                          type="text" 
+                          value={opt.optionText || ''}
+                          onChange={e => updateOptionText(qIndex, optIndex, e.target.value)}
+                          placeholder={`Pilihan ${String.fromCharCode(65 + optIndex)}`}
+                          className="flex-1 bg-transparent border-none text-xs focus:ring-0 text-stone-900 outline-none"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {q.type === 'ESSAY' && (
+                <div>
+                  <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-2">Kunci Jawaban Referensi (Untuk Dikoreksi AI)</label>
+                  <textarea 
+                    rows={3}
+                    value={q.referenceAnswer || ''}
+                    onChange={(e) => { const n = [...questions]; n[qIndex].referenceAnswer = e.target.value; setQuestions(n); }}
+                    placeholder="Contoh: Watashi wa ringo o tabemasu. (AI akan mencocokkan jawaban siswa dengan makna kalimat ini)"
+                    className="w-full px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-sm focus:outline-none focus:border-emerald-500 font-medium"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="flex items-center gap-1.5 text-[11px] font-semibold text-stone-500 uppercase mb-1">
