@@ -533,7 +533,27 @@ export default function AdminUsersPage() {
               <code className="text-stone-600 font-mono block bg-[#FDFBF7] p-2 rounded-lg mt-1">212210003,Doni Pratama,XII TKR 1,adb12345</code>
             </p>
             <form onSubmit={handleBulkCsv} className="space-y-4">
-              <textarea rows={6} required value={csvContent} onChange={(e) => setCsvContent(e.target.value)} placeholder="..." className="w-full px-3 py-2 bg-[#FDFBF7] border border-[#E8E2D2] rounded-xl text-stone-900 text-xs font-mono focus:outline-none focus:border-blue-500" />
+              <input 
+                type="file" 
+                accept=".csv" 
+                required 
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    setCsvContent(ev.target?.result as string);
+                  };
+                  reader.readAsText(file);
+                }} 
+                className="w-full text-xs text-stone-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" 
+              />
+              {csvContent && (
+                <div className="mt-2 p-3 bg-[#FDFBF7] border border-[#E8E2D2] rounded-xl max-h-40 overflow-y-auto">
+                  <p className="text-[10px] font-bold text-stone-400 mb-1">Pratinjau Data CSV:</p>
+                  <pre className="text-[10px] text-stone-600 font-mono whitespace-pre-wrap">{csvContent}</pre>
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setShowCsvModal(false)} className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-semibold rounded-xl">Batal</button>
                 <button type="submit" disabled={isUploadingCsv} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5">
