@@ -72,6 +72,7 @@ export default function ModuleEditorPage() {
   const [formAudioUrl, setFormAudioUrl] = useState('');
   const [formGdrivePrompt, setFormGdrivePrompt] = useState('');
   const [formDueHours, setFormDueHours] = useState('');
+  const [formDelayMinutes, setFormDelayMinutes] = useState('');
   const [formOrderIndex, setFormOrderIndex] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -115,6 +116,7 @@ export default function ModuleEditorPage() {
     setFormAudioUrl('');
     setFormGdrivePrompt('');
     setFormDueHours('');
+    setFormDelayMinutes('');
     setFormOrderIndex(items.length > 0 ? Math.max(...items.map(i => i.orderIndex)) + 1 : 1);
     setShowModal(true);
   };
@@ -152,6 +154,7 @@ export default function ModuleEditorPage() {
     setFormYoutubeUrl('');
     setFormAudioUrl('');
     setFormGdrivePrompt('');
+    setFormDelayMinutes('');
     setFormOrderIndex(items.length > 0 ? Math.max(...items.map(i => i.orderIndex)) + 1 : 1);
     setShowModal(true);
   };
@@ -163,6 +166,7 @@ export default function ModuleEditorPage() {
     setFormTitle(item.title);
     setFormBodyText(item.bodyText || '');
     setFormDueHours(item.dueHours ? String(item.dueHours) : '');
+    setFormDelayMinutes(item.delayMinutes ? String(item.delayMinutes) : '');
     setFormYoutubeUrl(item.youtubeUrl || '');
     setFormAudioUrl(item.audioUrl || '');
     setFormGdrivePrompt(item.gdrivePrompt || '');
