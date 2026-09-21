@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import YoutubeEmbed from '@/components/shared/YoutubeEmbed';
 import DriveUploadCard from '@/components/shared/DriveUploadCard';
 import ClientAccessTracker from '@/components/shared/ClientAccessTracker';
+import DelayedContent from '@/components/shared/DelayedContent';
 import { 
   ArrowLeft, 
   HelpCircle, 
@@ -80,6 +81,17 @@ export default async function SiswaModuleDetailPage({ params }: ModulePageProps)
   const attemptsCount = quiz?.attempts?.length || 0;
   const isRetakeBlocked = attemptsCount > 0 && (quiz?.allowRetake === false || attemptsCount >= (quiz?.maxRetakes || 3));
 
+  // Access Tracking untuk Delay Content
+  let access = await prisma.moduleAccess.findUnique({
+    where: { studentId_moduleId: { studentId: userId, moduleId: id } }
+  });
+  if (!access) {
+    access = await prisma.moduleAccess.create({
+      data: { studentId: userId, moduleId: id }
+    });
+  }
+  const accessStartTime = access.accessedAt.getTime();
+
   return (
     <div className="space-y-8 pb-12">
       <ClientAccessTracker moduleId={learningModule.id} />
@@ -124,6 +136,7 @@ export default async function SiswaModuleDetailPage({ params }: ModulePageProps)
       <div className="space-y-6">
         {learningModule.items.map((item, index) => {
           return (
+            <DelayedContent key={item.id} delayMinutes={item.delayMinutes || 0} accessStartTime={accessStartTime}>
             <section
               key={item.id}
               className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-4"
@@ -191,6 +204,7 @@ export default async function SiswaModuleDetailPage({ params }: ModulePageProps)
                 </div>
               )}
             </section>
+            </DelayedContent>
           );
         })}
       </div>

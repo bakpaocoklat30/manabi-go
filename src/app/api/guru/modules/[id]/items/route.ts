@@ -45,7 +45,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     const params = await context.params;
     const moduleId = params.id;
     const body = await req.json();
-    const { action, itemId, type, title, bodyText, youtubeUrl, audioUrl, gdrivePrompt, orderIndex, dueHours } = body;
+    const { action, itemId, type, title, bodyText, youtubeUrl, audioUrl, gdrivePrompt, orderIndex, dueHours, delayMinutes } = body;
 
     // Validasi kepemilikan modul
     const module = await prisma.learningModule.findUnique({
@@ -74,6 +74,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
           gdrivePrompt: gdrivePrompt || null,
           dueHours: dueHours ? Number(dueHours) : null,
           orderIndex: newIndex,
+          delayMinutes: delayMinutes ? Number(delayMinutes) : 0,
         },
       });
       return NextResponse.json({ message: 'Konten berhasil ditambahkan', item: newItem }, { status: 201 });
@@ -91,6 +92,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
           gdrivePrompt: gdrivePrompt || null,
           dueHours: dueHours ? Number(dueHours) : null,
           orderIndex: Number(orderIndex),
+          delayMinutes: delayMinutes ? Number(delayMinutes) : 0,
         },
       });
       return NextResponse.json({ message: 'Konten berhasil diperbarui', item: updatedItem }, { status: 200 });

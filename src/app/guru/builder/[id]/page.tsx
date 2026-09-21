@@ -25,6 +25,7 @@ interface ModuleItemData {
   audioUrl: string | null;
   gdrivePrompt: string | null;
   dueHours: number | null;
+  delayMinutes: number;
 }
 
 const TYPE_LABELS: Record<string, string> = {
