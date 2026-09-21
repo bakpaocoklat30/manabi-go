@@ -464,9 +464,20 @@ return (
       ) : (
         <div className="space-y-4">
           {combinedItems.map((item, index) => {
+            const delayIndicator = index > 0 && item.delayMinutes > 0 ? (
+              <div className="flex items-center justify-center -my-2 relative z-10 pointer-events-none pb-2">
+                <div className="bg-emerald-50 text-emerald-600 border border-emerald-200 px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow-sm">
+                  <Clock className="w-3.5 h-3.5" />
+                  Jeda: {item.delayMinutes} Menit sebelum materi ini
+                </div>
+              </div>
+            ) : null;
+
             if (item.type === 'QUIZ') {
               return (
-                <div key={item.id} className="bg-purple-50 border border-purple-200 rounded-2xl p-5 shadow-sm flex items-start gap-4 group">
+                <React.Fragment key={item.id}>
+                  {delayIndicator}
+                  <div className="bg-purple-50 border border-purple-200 rounded-2xl p-5 shadow-sm flex items-start gap-4 group">
                   <div className="flex flex-col items-center gap-1">
                     <button onClick={() => moveItem(index, 'UP')} disabled={index === 0} className="text-stone-400 hover:text-stone-700 disabled:opacity-30">▲</button>
                     <div className="w-8 h-8 rounded-full bg-purple-100 border border-purple-200 flex items-center justify-center text-purple-600 font-bold text-xs">
@@ -487,6 +498,7 @@ return (
                     </Link>
                   </div>
                 </div>
+                </React.Fragment>
               );
             }
             return (
