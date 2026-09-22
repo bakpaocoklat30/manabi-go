@@ -36,6 +36,7 @@ interface Question {
 interface QuizData {
   id: string;
   title: string;
+  quizType: string;
   timeLimitMinutes: number;
   passingScore: number;
   moduleId: string;
@@ -54,6 +55,7 @@ interface ReviewDetail {
   imageUrl?: string;
   explanation: string | null;
   selectedOptionId: string | null;
+  studentAnswerText?: string;
   correctOptionId: string | null;
   isCorrect: boolean;
 }
@@ -384,7 +386,6 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
                 );
               })}
             </div>
-            )}
           </div>
 
           {/* Kartu Pertanyaan Aktif */}
@@ -441,6 +442,7 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
                 );
               })}
             </div>
+            )}
 
             {/* Tombol Navigasi Bawah */}
             <div className="flex items-center justify-between pt-4 border-t border-slate-800">
