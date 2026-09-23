@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { UploadCloud, CheckCircle2, AlertCircle, Loader2, FileImage, FolderGit2, FileCheck, MessageSquare, Clock, Send, Camera, X } from 'lucide-react';
+import { UploadCloud, CheckCircle2, AlertCircle, Loader2, FileImage, FolderGit2, FileCheck, MessageSquare, Clock, Send, Camera, X, Sparkles, ExternalLink } from 'lucide-react';
 
 interface DriveUploadCardProps {
   moduleItemId: string;
@@ -185,6 +185,27 @@ export default function DriveUploadCard({
     }
   }
 
+  // Extract all annotated images from feedback if present
+  const getAnnotatedUrls = (feedback: string | null | undefined): string[] => {
+    if (!feedback || typeof feedback !== 'string') return [];
+    const regex = /\/uploads\/annotated\/[^\s\)\"\']+/g;
+    const matches = feedback.match(regex);
+    if (!matches) return [];
+    return Array.from(new Set(matches));
+  };
+
+  const getCleanFeedback = (feedback: string | null | undefined): string => {
+    if (!feedback || typeof feedback !== 'string') return '';
+    return feedback
+      .replace(/!?\[.*?\]\(\/uploads\/annotated\/[^\)]+\)/g, '')
+      .replace(/\/uploads\/annotated\/[^\s\)\"\']+/g, '')
+      .trim();
+  };
+
+  const annotatedUrls = getAnnotatedUrls(existingSubmission?.feedback);
+  const cleanFeedback = getCleanFeedback(existingSubmission?.feedback);
+  const isEvaluated = (existingSubmission?.grade !== null && existingSubmission?.grade !== undefined) || annotatedUrls.length > 0 || cleanFeedback.length > 0;
+
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
       <div className="border-b border-slate-800 pb-4">
@@ -197,23 +218,74 @@ export default function DriveUploadCard({
         </p>
       </div>
 
-      {existingSubmission?.grade !== null && existingSubmission?.grade !== undefined && (
-        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/60 space-y-2">
+      {isEvaluated && (
+        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/60 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
               <FileCheck className="w-4 h-4" />
-              Tugas Telah Dinilai oleh Sensei
+              {existingSubmission?.grade !== null && existingSubmission?.grade !== undefined
+                ? 'Tugas Telah Dinilai oleh Sensei'
+                : 'Koreksi & Evaluasi dari Sensei'}
             </span>
-            <span className="text-sm font-extrabold text-emerald-300 font-mono px-2.5 py-0.5 rounded-lg bg-emerald-900/60 border border-emerald-700">
-              Nilai: {existingSubmission.grade} / 100
-            </span>
+            {existingSubmission?.grade !== null && existingSubmission?.grade !== undefined && (
+              <span className="text-sm font-extrabold text-emerald-300 font-mono px-2.5 py-0.5 rounded-lg bg-emerald-900/60 border border-emerald-700">
+                Nilai: {existingSubmission.grade} / 100
+              </span>
+            )}
           </div>
-          {existingSubmission.feedback && (
-            <div className="text-xs text-slate-300 pt-1 flex items-start gap-2">
-              <MessageSquare className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-              <p className="italic">"{existingSubmission.feedback}"</p>
-            </div>
-          )}
+          <div className="space-y-3 pt-1">
+            {cleanFeedback && (
+              <div className="text-xs text-slate-300 flex items-start gap-2 bg-slate-950/60 p-3 rounded-xl border border-emerald-900/40">
+                <MessageSquare className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                <p className="italic">"{cleanFeedback}"</p>
+              </div>
+            )}
+            {annotatedUrls.length > 0 && (
+              <div className="p-3.5 bg-slate-950/90 border border-emerald-700/50 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+                    Lembar Koreksi dari Sensei ({annotatedUrls.length} file coretan):
+                  </span>
+                  <span className="text-[10px] text-slate-400 hidden sm:inline">
+                    Klik foto untuk memperbesar di tab baru
+                  </span>
+                </div>
+                <div className={`grid gap-3 ${annotatedUrls.length === 1 ? 'grid-cols-1 max-w-md' : 'grid-cols-1 sm:grid-cols-2'}`}>
+                  {annotatedUrls.map((url, idx) => (
+                    <a
+                      key={idx}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative block rounded-xl overflow-hidden border border-slate-700 hover:border-emerald-500 bg-slate-900 transition-all shadow-md hover:shadow-emerald-950/50"
+                      title={`Buka Lembar Koreksi #${idx + 1}`}
+                    >
+                      <div className="px-3 py-1.5 bg-slate-900/95 border-b border-slate-800 flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          Koreksi #{idx + 1}
+                        </span>
+                        <span className="text-[10px] text-slate-400 group-hover:text-emerald-300 flex items-center gap-0.5 transition">
+                          Perbesar <ExternalLink className="w-3 h-3" />
+                        </span>
+                      </div>
+                      <div className="relative aspect-[4/3] flex items-center justify-center bg-slate-950 p-1.5">
+                        <img 
+                          src={url} 
+                          alt={`Hasil Koreksi Sensei #${idx + 1}`} 
+                          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200" 
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition backdrop-blur-[1px]">
+                          Klik untuk Memperbesar #{idx + 1}
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

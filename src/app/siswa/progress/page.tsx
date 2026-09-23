@@ -81,12 +81,35 @@ export default async function ProgressPage() {
                     )}
                   </div>
                   </div>
-                  {sub.feedback && (
-                    <div className="mt-1 p-2.5 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800 w-full">
-                      <strong className="block mb-0.5 text-blue-900">Catatan Guru:</strong>
-                      {sub.feedback}
-                    </div>
-                  )}
+                  {sub.feedback && (() => {
+                    const annotatedUrls = Array.from(new Set(sub.feedback.match(/\/uploads\/annotated\/[^\s\)\"\']+/g) || []));
+                    const cleanFeedback = sub.feedback
+                      .replace(/!?\[.*?\]\(\/uploads\/annotated\/[^\)]+\)/g, '')
+                      .replace(/\/uploads\/annotated\/[^\s\)\"\']+/g, '')
+                      .trim();
+
+                    return (
+                      <div className="mt-1 p-2.5 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800 w-full space-y-1.5">
+                        <strong className="block mb-0.5 text-blue-900">Catatan Guru:</strong>
+                        {cleanFeedback && <p>{cleanFeedback}</p>}
+                        {annotatedUrls.length > 0 && (
+                          <div className="pt-1 flex flex-wrap gap-2">
+                            {annotatedUrls.map((url, idx) => (
+                              <a
+                                key={idx}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-100 hover:bg-blue-200 text-xs text-blue-800 font-bold transition"
+                              >
+                                <span>🖼️ Lembar Koreksi #{idx + 1}</span>
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>

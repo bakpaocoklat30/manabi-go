@@ -88,6 +88,7 @@ export default async function SiswaModuleDetailPage({ params }: ModulePageProps)
     });
   }
   const accessStartTime = access.accessedAt.getTime();
+  const serverNow = Date.now();
 
   return (
     <div className="space-y-8 pb-12">
@@ -131,13 +132,13 @@ export default async function SiswaModuleDetailPage({ params }: ModulePageProps)
 
       {/* Konten Materi Berurutan */}
       <div className="space-y-6">
-        // Hitung kumulatif delay untuk seluruh item (agar Jeda adalah jeda dari konten sebelumnya)
+        {/* Hitung kumulatif delay untuk seluruh item (agar Jeda adalah jeda dari konten sebelumnya) */}
         {(() => {
           let cumulativeDelay = 0;
           return learningModule.items.map((item, index) => {
             cumulativeDelay += (item.delayMinutes || 0);
             return (
-              <DelayedContent key={item.id} delayMinutes={cumulativeDelay} accessStartTime={accessStartTime}>
+              <DelayedContent key={item.id} delayMinutes={cumulativeDelay} accessStartTime={accessStartTime} serverNow={serverNow}>
             <section
               key={item.id}
               className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-4"
@@ -225,6 +226,7 @@ export default async function SiswaModuleDetailPage({ params }: ModulePageProps)
             key={q.id}
             delayMinutes={quizDelay} 
             accessStartTime={accessStartTime}
+            serverNow={serverNow}
           >
           <div className="bg-gradient-to-r from-red-950/50 via-slate-900 to-slate-900 border border-red-800/40 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl mb-6">
             <div className="space-y-2">

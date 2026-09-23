@@ -53,24 +53,30 @@
    npm install
    ```
 
-3. **Konfigurasi Environment**
-   Buat file `.env` di *root directory* dan isi dengan parameter berikut:
+3. **Jalankan Database di Docker**
+   Pastikan Docker Desktop aktif, lalu jalankan hanya container database PostgreSQL:
+   ```bash
+   npm run docker:db
+   # atau: docker compose up -d manabi_postgres
+   ```
+   *Catatan: PostgreSQL di-expose ke port **5434** host.*
+
+4. **Konfigurasi Environment**
+   File `.env` sudah disiapkan (atau salin dari `.env.example`):
    ```env
-   # Koneksi Database
-   DATABASE_URL="postgresql://user:password@localhost:5432/manabigo_db"
-   
-   # NextAuth Secret
-   NEXTAUTH_SECRET="buat_rahasia_acak_anda_disini"
+   DATABASE_URL="postgresql://manabi_user:adb_jepang_secret_2026@localhost:5434/manabi_go_db?schema=public"
+   AUTH_SECRET="super_secret_manabi_adb_token_key_2026"
+   NEXTAUTH_SECRET="super_secret_manabi_adb_token_key_2026"
    NEXTAUTH_URL="http://localhost:3000"
    ```
 
-4. **Migrasi Database & Seeding**
+5. **Sinkronisasi Schema Database & Seeding**
    ```bash
-   npx prisma db push
-   npx prisma db seed
+   npm run prisma:push
+   npm run db:seed
    ```
 
-5. **Jalankan Server Development**
+6. **Jalankan Server Development**
    ```bash
    npm run dev
    ```

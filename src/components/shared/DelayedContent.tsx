@@ -6,26 +6,42 @@ import { Lock, Clock } from 'lucide-react';
 interface Props {
   delayMinutes: number;
   accessStartTime: number;
+  serverNow?: number;
   children: React.ReactNode;
 }
 
-export default function DelayedContent({ delayMinutes, accessStartTime, children }: Props) {
+export default function DelayedContent({ delayMinutes, accessStartTime, serverNow, children }: Props) {
   const [remainingSecs, setRemainingSecs] = useState(() => {
     if (delayMinutes <= 0) return 0;
+    // Gunakan serverNow saat render pertama/SSR agar server dan client konsisten (menghindari hydration error)
+    const baseNow = serverNow || accessStartTime;
     const unlockTime = accessStartTime + delayMinutes * 60 * 1000;
-    const diff = Math.ceil((unlockTime - Date.now()) / 1000);
+    const diff = Math.ceil((unlockTime - baseNow) / 1000);
     return diff > 0 ? diff : 0;
   });
 
   useEffect(() => {
-    if (remainingSecs <= 0) return;
-    const timer = setInterval(() => {
+    if (delayMinutes <= 0) return;
+
+    const calculateRemaining = () => {
       const unlockTime = accessStartTime + delayMinutes * 60 * 1000;
       const diff = Math.ceil((unlockTime - Date.now()) / 1000);
-      setRemainingSecs(diff > 0 ? diff : 0);
+      return diff > 0 ? diff : 0;
+    };
+
+    // Update segera saat client mount
+    setRemainingSecs(calculateRemaining());
+
+    const timer = setInterval(() => {
+      const diff = calculateRemaining();
+      setRemainingSecs(diff);
+      if (diff <= 0) {
+        clearInterval(timer);
+      }
     }, 1000);
+
     return () => clearInterval(timer);
-  }, [accessStartTime, delayMinutes, remainingSecs]);
+  }, [accessStartTime, delayMinutes]);
 
   if (remainingSecs > 0) {
     const mins = Math.floor(remainingSecs / 60);
@@ -39,9 +55,14 @@ export default function DelayedContent({ delayMinutes, accessStartTime, children
         <p className="text-stone-400 text-sm max-w-sm">
           Fokus pada materi sebelumnya dulu. Konten ini akan terbuka otomatis dalam:
         </p>
-        <div className="flex items-center gap-2 mt-4 bg-[#2D2A26] px-5 py-2.5 rounded-xl text-emerald-400 font-mono font-bold text-lg shadow-inner">
+        <div 
+          className="flex items-center gap-2 mt-4 bg-[#2D2A26] px-5 py-2.5 rounded-xl text-emerald-400 font-mono font-bold text-lg shadow-inner"
+          suppressHydrationWarning
+        >
           <Clock className="w-5 h-5" />
-          {mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}
+          <span suppressHydrationWarning>
+            {mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}
+          </span>
         </div>
       </div>
     );
@@ -49,3 +70,4 @@ export default function DelayedContent({ delayMinutes, accessStartTime, children
 
   return <>{children}</>;
 }
+
