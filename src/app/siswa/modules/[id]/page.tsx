@@ -49,6 +49,7 @@ export default async function SiswaModuleDetailPage({ params }: ModulePageProps)
         },
       },
       quizzes: {
+        orderBy: { orderIndex: 'asc' },
         include: {
           attempts: {
             where: { studentId: userId },

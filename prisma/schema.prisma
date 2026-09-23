@@ -191,6 +191,8 @@ model QuizAttempt {
   cheatCount     Int       @default(0) // Berapa kali terdeteksi pindah tab
   startedAt      DateTime  @default(now())
   completedAt    DateTime?
+  status         String    @default("GRADED") // GRADED, PENDING_GRADING
+  answers        Json?     // Menyimpan riwayat jawaban teks siswa
 
   @@index([quizId, studentId])
 }

@@ -144,6 +144,13 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       return NextResponse.json({ message: 'Konten berhasil dihapus' }, { status: 200 });
     }
 
+    if (action === 'DELETE_QUIZ') {
+      await prisma.quiz.delete({
+        where: { id: itemId, moduleId },
+      });
+      return NextResponse.json({ message: 'Kuis berhasil dihapus' }, { status: 200 });
+    }
+
     return NextResponse.json({ message: 'Aksi tidak valid' }, { status: 400 });
   } catch (error) {
     console.error(error);

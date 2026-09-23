@@ -72,6 +72,7 @@ export async function POST(req: Request) {
     // Pemetaan jawaban dan penghitungan skor
     let totalCorrect = 0;
     const reviewDetails = [];
+    const isPending = quiz.quizType === 'ESSAY';
 
     for (const question of quiz.questions) {
       const studentAnswer = answers.find((a) => a.questionId === question.id);
@@ -80,43 +81,9 @@ export async function POST(req: Request) {
       let correctOptionId = null;
 
       if (question.type === 'ESSAY') {
-        // AI Grading for Essay
-        const studentText = studentAnswer?.answerText || '';
-        const reference = question.referenceAnswer || '';
-        
-        if (studentText.trim().length > 0) {
-          try {
-            const aiSetting = await prisma.systemSetting.findUnique({ where: { key: 'ai_grading_prompt' } });
-            const defaultPrompt = `Anda adalah guru bahasa yang mengoreksi jawaban singkat.\nPertanyaan/Konteks tidak diberikan, tapi ini Kunci Jawaban Benar: "{{reference}}"\nJawaban Siswa: "{{studentText}}"\nTugas Anda: Jika jawaban siswa memiliki makna yang sama, secara semantik benar, atau merujuk pada hal yang persis sama dengan kunci jawaban (abaikan salah ketik kecil/typo), balas HANYA dengan kata "TRUE". Jika salah, balas HANYA dengan kata "FALSE".`;
-            let prompt = (aiSetting?.value || defaultPrompt)
-              .replace('{{reference}}', reference)
-              .replace('{{studentText}}', studentText);
-            
-            const apiKey = process.env.GEMINI_API_KEY;
-            if (apiKey) {
-              const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }],
-                  generationConfig: { maxOutputTokens: 5, temperature: 0.1 }
-                })
-              });
-              const aiData = await res.json();
-              const aiResponseText = aiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()?.toUpperCase() || '';
-              if (aiResponseText.includes('TRUE')) {
-                isAnswerCorrect = true;
-              }
-            } else {
-              // Fallback manual check if no API key
-              if (studentText.toLowerCase().trim() === reference.toLowerCase().trim()) {
-                isAnswerCorrect = true;
-              }
-            }
-          } catch (e) {
-            console.error('AI Grading failed', e);
-          }
-        }
+        // Tipe essay tidak lagi dinilai instan secara otomatis oleh AI
+        // Status kuis akan menjadi PENDING_GRADING
+        isAnswerCorrect = false;
       } else {
         // Normal Multiple Choice
         chosenOptionId = studentAnswer?.selectedOptionId || null;
@@ -144,7 +111,14 @@ export async function POST(req: Request) {
       });
     }
 
-    const finalScore = Math.round((totalCorrect / totalQuestions) * 100);
+    const finalScore = isPending ? 0 : Math.round((totalCorrect / totalQuestions) * 100);
+    const status = isPending ? 'PENDING_GRADING' : 'GRADED';
+    
+    const answersJson = answers.map(a => ({
+      questionId: a.questionId,
+      selectedOptionId: a.selectedOptionId || null,
+      answerText: a.answerText || ''
+    }));
 
     // Simpan riwayat attempt siswa ke PostgreSQL
     const attemptRecord = await prisma.quizAttempt.create({
@@ -152,23 +126,26 @@ export async function POST(req: Request) {
         quizId,
         studentId: userId,
         score: finalScore,
-        totalCorrect,
+        totalCorrect: isPending ? 0 : totalCorrect,
         totalQuestions,
         cheatCount: cheatCount || 0,
         completedAt: new Date(),
+        status,
+        answers: answersJson
       },
     });
 
     return NextResponse.json(
       {
-        message: 'Kuis berhasil dinilai.',
+        message: isPending ? 'Jawaban berhasil dikumpulkan. Menunggu koreksi dari guru.' : 'Kuis berhasil dinilai.',
         attemptId: attemptRecord.id,
         score: finalScore,
-        totalCorrect,
+        status,
+        totalCorrect: isPending ? 0 : totalCorrect,
         totalQuestions,
-        isPassed: finalScore >= quiz.passingScore,
+        isPassed: isPending ? false : finalScore >= quiz.passingScore,
         passingScore: quiz.passingScore,
-        review: reviewDetails,
+        review: isPending ? [] : reviewDetails, // Hide review details if pending
       },
       { status: 200 }
     );

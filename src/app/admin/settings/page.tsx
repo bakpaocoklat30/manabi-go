@@ -12,7 +12,8 @@ export default function SettingsPage() {
     auto_backup_schedule: 'manual',
     api_sudarmono: '',
     ai_grading_prompt: '',
-    gemini_api_key: ''
+    gemini_api_key: '',
+    gemini_model_name: ''
   });
   
   const [isLoading, setIsLoading] = useState(true);
@@ -59,6 +60,7 @@ export default function SettingsPage() {
           api_sudarmono: settings.api_sudarmono || '',
           ai_grading_prompt: settings.ai_grading_prompt || '',
           gemini_api_key: settings.gemini_api_key || '',
+          gemini_model_name: settings.gemini_model_name || '',
         });
       }
     } catch (e) {
@@ -328,9 +330,22 @@ export default function SettingsPage() {
               <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
                 <Bot className="w-4 h-4 text-indigo-600" />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">Agent AI Korektor Kuis Isian</h3>
-                <p className="text-[10px] text-slate-500">Sistem prompt (instruksi) yang digunakan Gemini untuk menilai jawaban essay/isian singkat siswa.</p>
+              <div className="flex-1">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-sm font-bold text-slate-800">Agent AI Korektor Kuis Isian</h3>
+                  {formData.gemini_api_key && formData.gemini_api_key.trim().length > 0 ? (
+                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] font-bold rounded-full flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Status: Aktif Berjalan
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 bg-red-50 text-red-600 border border-red-200 text-[10px] font-bold rounded-full flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                      Status: Tidak Aktif
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">Sistem prompt (instruksi) yang digunakan Gemini untuk menilai jawaban essay/isian singkat siswa.</p>
               </div>
             </div>
             
@@ -347,6 +362,26 @@ export default function SettingsPage() {
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:outline-none focus:border-indigo-500"
                 />
                 <p className="text-[10px] text-slate-500 mt-1.5">Kunci rahasia dari Google AI Studio untuk mengaktifkan fitur koreksi otomatis.</p>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Gemini Model Name (Opsional)</label>
+                <input 
+                  type="text"
+                  list="gemini-models"
+                  name="gemini_model_name"
+                  value={formData.gemini_model_name || ''}
+                  onChange={handleChange}
+                  placeholder="Contoh: gemini-3.6-flash (Kosongkan untuk auto-detect)"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:outline-none focus:border-indigo-500"
+                />
+                <datalist id="gemini-models">
+                  <option value="gemini-3.6-flash">gemini-3.6-flash (Rekomendasi Google)</option>
+                  <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                  <option value="gemini-1.5-pro">gemini-1.5-pro (Akurasi Tinggi)</option>
+                  <option value="gemini-pro">gemini-pro (Universal)</option>
+                </datalist>
+                <p className="text-[10px] text-slate-500 mt-1.5">Pilih dari daftar atau ketik manual model terbaru dari Google jika opsi di atas sudah usang.</p>
               </div>
 
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 mt-4">Sistem Prompt (Koreksi Otomatis AI)</label>

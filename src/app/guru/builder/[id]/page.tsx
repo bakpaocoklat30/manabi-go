@@ -303,6 +303,20 @@ export default function ModuleEditorPage() {
     }
   };
 
+  const handleDeleteQuiz = async (id: string) => {
+    if (!confirm('Yakin ingin menghapus kuis ini beserta semua data nilainya?')) return;
+    try {
+      const res = await fetch(`/api/guru/modules/${moduleId}/items`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'DELETE_QUIZ', itemId: id })
+      });
+      if (res.ok) {
+        setNotification({ type: 'success', message: 'Kuis berhasil dihapus.' });
+        loadData();
+      }
+    } catch (e) {
+      setNotification({ type: 'error', message: 'Gagal menghapus kuis.' });
+    }
+  };
 
   if (isLoading) {
     return <div className="min-h-[50vh] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
@@ -601,10 +615,13 @@ return (
                     </div>
                     <h3 className="text-sm font-bold text-stone-900 leading-snug">{item.title}</h3>
                   </div>
-                  <div className="flex gap-2 mt-2">
-                    <Link href={`/guru/builder/${moduleId}/quiz`} className="p-2 text-stone-400 hover:text-purple-600 hover:bg-purple-100 rounded-lg transition" title="Edit Kuis">
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity mt-2">
+                    <Link href={`/guru/builder/${moduleId}/quiz?type=${item.quizType || 'MULTIPLE_CHOICE'}`} className="p-2 text-stone-400 hover:text-purple-600 hover:bg-purple-100 rounded-lg transition" title="Edit Kuis">
                       <Pencil className="w-4 h-4" />
                     </Link>
+                    <button onClick={() => handleDeleteQuiz(item.id)} className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Hapus Kuis">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
                 </React.Fragment>

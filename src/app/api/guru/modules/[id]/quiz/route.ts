@@ -80,6 +80,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
         antiCheatMode: antiCheatMode || 'WARNING',
         allowRetake: typeof allowRetake === 'boolean' ? allowRetake : true,
         maxRetakes: maxRetakes ? Number(maxRetakes) : 3,
+        orderIndex: quizType === 'MULTIPLE_CHOICE' ? 1 : 2, // Sort order
       };
 
       if (quiz) {
@@ -104,7 +105,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
           const newQ = await tx.question.create({
             data: {
               quizId: quiz.id,
-              type: q.type || 'MULTIPLE_CHOICE',
+              type: quizType, // Force to match parent quizType so they don't get mixed up!
               referenceAnswer: q.referenceAnswer || null,
               questionText: q.questionText,
               imageUrl: q.imageUrl || null,

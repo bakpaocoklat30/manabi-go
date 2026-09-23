@@ -65,6 +65,7 @@ interface SubmissionResult {
   totalCorrect: number;
   totalQuestions: number;
   isPassed: boolean;
+  status?: string;
   passingScore: number;
   review: ReviewDetail[];
 }
@@ -261,22 +262,38 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
             </div>
 
             <div>
-              <span
-                className={`text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border ${
-                  result.isPassed
-                    ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300'
-                    : 'bg-amber-950/60 border-amber-800 text-amber-300'
-                }`}
-              >
-                {result.isPassed ? 'Lulus KKM STM ADB' : 'Belum Memenuhi KKM'}
-              </span>
-              <h3 className="text-4xl font-black text-white font-mono mt-3">
-                {result.score} <span className="text-base font-normal text-slate-500">/ 100</span>
-              </h3>
-              <p className="text-xs text-slate-400 mt-2">
-                Menjawab benar <strong className="text-white">{result.totalCorrect}</strong> dari{' '}
-                <strong className="text-white">{result.totalQuestions}</strong> butir soal (Batas KKM: {result.passingScore}).
-              </p>
+              {result.status === 'PENDING_GRADING' ? (
+                <>
+                  <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border bg-blue-950/60 border-blue-800 text-blue-300">
+                    Menunggu Koreksi Guru
+                  </span>
+                  <h3 className="text-2xl font-black text-white font-mono mt-4">
+                    Jawaban Tersimpan
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-2">
+                    Guru akan meninjau dan menilai esai Anda.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <span
+                    className={`text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border ${
+                      result.isPassed
+                        ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300'
+                        : 'bg-amber-950/60 border-amber-800 text-amber-300'
+                    }`}
+                  >
+                    {result.isPassed ? 'Lulus KKM STM ADB' : 'Belum Memenuhi KKM'}
+                  </span>
+                  <h3 className="text-4xl font-black text-white font-mono mt-3">
+                    {result.score} <span className="text-base font-normal text-slate-500">/ 100</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-2">
+                    Menjawab benar <strong className="text-white">{result.totalCorrect}</strong> dari{' '}
+                    <strong className="text-white">{result.totalQuestions}</strong> butir soal (Batas KKM: {result.passingScore}).
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
@@ -292,13 +309,15 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
                   setResult(null);
                   setSelectedAnswers({});
                   setCurrentQuestionIndex(0);
+                  setCheatWarnings(0); // Reset peringatan contek
                   // Update local attempt count so they can't infinitely click it in same session
                   setQuizData({...quizData, attemptsCount: quizData.attemptsCount + 1});
                 }}
-                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-lg shadow-red-600/30 flex items-center gap-2"
+                disabled={result.status === 'PENDING_GRADING'}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold transition shadow-lg shadow-red-600/30 flex items-center gap-2"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Ulangi Pengerjaan (Sisa: {quizData.maxRetakes - quizData.attemptsCount})</span>
+                <span>{result.status === 'PENDING_GRADING' ? 'Sedang Dikoreksi' : `Ulangi Pengerjaan (Sisa: ${quizData.maxRetakes - quizData.attemptsCount})`}</span>
               </button>
             )}
             </div>

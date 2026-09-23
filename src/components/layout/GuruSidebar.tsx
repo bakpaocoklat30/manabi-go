@@ -11,6 +11,7 @@ import {
   LogOut, 
   Sparkles, 
   X,
+  Bot,
   ExternalLink
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
@@ -54,6 +55,11 @@ export default function GuruSidebar({
       href: '/guru/evaluations',
       icon: FileCheck2,
       badge: pendingCount > 0 ? pendingCount : null,
+    },
+    {
+      label: 'Koreksi Kuis (AI)',
+      href: '/guru/koreksi-kuis',
+      icon: Bot,
     },
     {
       label: 'Rekap Nilai Siswa',
