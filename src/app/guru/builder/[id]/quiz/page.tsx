@@ -482,7 +482,28 @@ export default function QuizBuilderPage() {
                   )}
                 </div>
               </div>
-              <div>
+
+              {quizType === 'LISTENING' && (
+                <div className="mb-4 bg-stone-50 border border-stone-200 p-3 rounded-xl flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-stone-800">Bentuk Jawaban</h4>
+                    <p className="text-[10px] text-stone-500">Pilih format cara siswa menjawab soal mendengarkan ini.</p>
+                  </div>
+                  <select
+                    value={q.type === 'ESSAY' ? 'ESSAY' : 'MULTIPLE_CHOICE'}
+                    onChange={(e) => {
+                      const newQ = [...questions];
+                      newQ[qIndex].type = e.target.value;
+                      setQuestions(newQ);
+                    }}
+                    className="px-3 py-1.5 bg-white border border-stone-200 rounded-lg text-xs font-bold text-stone-700 outline-none focus:border-purple-500"
+                  >
+                    <option value="MULTIPLE_CHOICE">Pilihan Ganda</option>
+                    <option value="ESSAY">Isian Singkat (Teks)</option>
+                  </select>
+                </div>
+              )}
+\n              <div>
                 <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-1">Pertanyaan</label>
 
 
@@ -497,7 +518,7 @@ export default function QuizBuilderPage() {
 
               
 
-              {(!q.type || q.type === 'MULTIPLE_CHOICE' || q.type === 'LISTENING') && (
+              {(q.type !== 'ESSAY') && (
                 <div>
                   <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-2">Pilihan Ganda (Tandai yang Benar)</label>
                   <div className="space-y-2">

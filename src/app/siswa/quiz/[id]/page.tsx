@@ -155,8 +155,8 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
     const currentAnswers = selectedAnswersRef.current;
     const formattedAnswers = quizData.questions.map((q) => ({
       questionId: q.id,
-      selectedOptionId: quizData.quizType === 'ESSAY' ? null : (currentAnswers[q.id] || ''),
-      answerText: quizData.quizType === 'ESSAY' ? (currentAnswers[q.id] || '') : null,
+      selectedOptionId: q.type === 'ESSAY' ? null : (currentAnswers[q.id] || ''),
+      answerText: q.type === 'ESSAY' ? (currentAnswers[q.id] || '') : null,
     }));
 
     try {
@@ -381,7 +381,7 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
                       {item.explanation}
                     </div>
                   )}
-                  {quizData.quizType === 'ESSAY' && (
+                  {item.studentAnswerText !== undefined && item.studentAnswerText !== null && (
                     <div className="mt-3 p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-900/50 text-xs text-indigo-300 leading-relaxed">
                       <span className="font-bold text-indigo-400 block mb-1">Jawaban Anda:</span>
                       {item.studentAnswerText || 'Tidak dijawab'}
@@ -429,7 +429,7 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
               <span className="text-xs font-bold text-red-400 uppercase tracking-wider">
                 Pertanyaan {currentQuestionIndex + 1} dari {totalQuestions}
               </span>
-              <span className="text-xs text-slate-500 font-medium">{quizData.quizType === 'ESSAY' ? 'Isian Singkat' : 'Pilihan Ganda'}</span>
+              <span className="text-xs text-slate-500 font-medium">{currentQuestion.type === 'ESSAY' ? 'Isian Singkat' : 'Pilihan Ganda'}</span>
             </div>
 
             {currentQuestion.audioUrl && (
@@ -447,7 +447,7 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
             </p>
 
             {/* Input Jawaban */}
-            {quizData.quizType === 'ESSAY' ? (
+            {currentQuestion.type === 'ESSAY' ? (
               <textarea
                 rows={5}
                 value={selectedAnswers[currentQuestion.id] || ''}
