@@ -4,12 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
-  ArrowLeft, Plus, Trash2, Loader2, Save, CheckCircle2, AlertCircle, HelpCircle
+  ArrowLeft, Plus, Trash2, Loader2, Save, X, Headphones, CheckCircle2, AlertCircle, HelpCircle
 } from 'lucide-react';
 
 interface Option {
   optionText: string;
   isCorrect: boolean;
+  imageUrl?: string;
 }
 
 interface Question {
@@ -17,6 +18,7 @@ interface Question {
   referenceAnswer?: string | null;
   questionText: string;
   imageUrl?: string;
+  audioUrl?: string;
   explanation: string;
   options: Option[];
 }
@@ -32,14 +34,16 @@ export default function QuizBuilderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const [title, setTitle] = useState('Kuis Evaluasi');
+  const [title, setTitle] = useState("Kuis Evaluasi");
+  const [quizAudioUrl, setQuizAudioUrl] = useState("");
   const [timeLimit, setTimeLimit] = useState(15);
   const [passingScore, setPassingScore] = useState(75);
   const [randomizeOptions, setRandomizeOptions] = useState(true);
   const [randomizeQuestions, setRandomizeQuestions] = useState(true);
   const [antiCheatMode, setAntiCheatMode] = useState('WARNING');
   const [allowRetake, setAllowRetake] = useState(true);
-  const [maxRetakes, setMaxRetakes] = useState(3);
+  const [maxRetakes,
+          audioUrl: quizAudioUrl, setMaxRetakes] = useState(3);
   const [questions, setQuestions] = useState<Question[]>([]);
 
   useEffect(() => {
@@ -52,6 +56,7 @@ export default function QuizBuilderPage() {
             setTitle(data.quiz.title);
             setTimeLimit(data.quiz.timeLimitMinutes);
             setPassingScore(data.quiz.passingScore);
+            setQuizAudioUrl(data.quiz.audioUrl || "");
           setRandomizeOptions(data.quiz.randomizeOptions !== false);
           setRandomizeQuestions(data.quiz.randomizeQuestions !== false);
           setAntiCheatMode(data.quiz.antiCheatMode || 'WARNING');
@@ -119,6 +124,33 @@ export default function QuizBuilderPage() {
     setQuestions(newQ);
   };
 
+  
+  const handleOptionPaste = (qIndex: number, optIndex: number, e: React.ClipboardEvent<HTMLInputElement>) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const blob = items[i].getAsFile();
+        if (blob) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const base64String = event.target?.result as string;
+            const newQ = [...questions];
+            newQ[qIndex].options[optIndex].imageUrl = base64String;
+            setQuestions(newQ);
+          };
+          reader.readAsDataURL(blob);
+          e.preventDefault();
+        }
+      }
+    }
+  };
+  
+  const removeOptionImage = (qIndex: number, optIndex: number) => {
+    const newQ = [...questions];
+    newQ[qIndex].options[optIndex].imageUrl = undefined;
+    setQuestions(newQ);
+  };
+
   const updateOptionText = (qIndex: number, optIndex: number, text: string) => {
     const newQ = [...questions];
     newQ[qIndex].options[optIndex].optionText = text;
@@ -131,6 +163,16 @@ export default function QuizBuilderPage() {
       opt.isCorrect = (idx === optIndex);
     });
     setQuestions(newQ);
+  };
+
+  
+  const handleAudioUpload = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/upload/audio', { method: 'POST', body: formData });
+    if (!res.ok) throw new Error('Gagal mengunggah audio');
+    const data = await res.json();
+    return data.url;
   };
 
   const handleSubmit = async () => {
@@ -167,6 +209,7 @@ export default function QuizBuilderPage() {
           antiCheatMode,
           allowRetake,
           maxRetakes,
+          audioUrl: quizAudioUrl,
           questions
         })
       });
@@ -390,14 +433,25 @@ export default function QuizBuilderPage() {
                           onChange={() => setCorrectOption(qIndex, optIndex)}
                           className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
                         />
-                        <input 
-                          type="text" 
-                          value={opt.optionText || ''}
-                          onChange={e => updateOptionText(qIndex, optIndex, e.target.value)}
-                          placeholder={`Pilihan ${String.fromCharCode(65 + optIndex)}`}
-                          className="flex-1 bg-transparent border-none text-xs focus:ring-0 text-stone-900 outline-none"
-                        />
-                      </div>
+                        
+                          <input 
+                            type="text" 
+                            value={opt.optionText || ''}
+                            onChange={e => updateOptionText(qIndex, optIndex, e.target.value)}
+                            onPaste={(e) => handleOptionPaste(qIndex, optIndex, e)}
+                            placeholder={`Pilihan ${String.fromCharCode(65 + optIndex)} (Tekan Ctrl+V untuk Paste Gambar)`}
+                            className="flex-1 bg-transparent border-none text-xs focus:ring-0 text-stone-900 outline-none"
+                          />
+                        </div>
+                        {opt.imageUrl && (
+                          <div className="mt-2 ml-7 relative inline-block">
+                            <img src={opt.imageUrl} alt="Option Image" className="h-16 object-contain border rounded shadow-sm" />
+                            <button onClick={() => removeOptionImage(qIndex, optIndex)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow hover:bg-red-600">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+
                     ))}
                   </div>
                 </div>

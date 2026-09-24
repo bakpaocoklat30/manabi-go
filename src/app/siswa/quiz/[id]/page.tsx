@@ -23,6 +23,7 @@ import QuizTimer from '@/components/shared/QuizTimer';
 interface Option {
   id: string;
   optionText: string;
+  imageUrl?: string;
 }
 
 interface Question {
@@ -30,6 +31,7 @@ interface Question {
   type: string;
   questionText: string;
   imageUrl?: string;
+  audioUrl?: string;
   orderIndex: number;
   options: Option[];
 }
@@ -47,6 +49,7 @@ interface QuizData {
   randomizeOptions?: boolean;
   randomizeQuestions?: boolean;
   antiCheatMode?: string;
+  audioUrl?: string;
   questions: Question[];
 }
 
@@ -222,6 +225,15 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-16">
+      {quizData.audioUrl && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col gap-3">
+          <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+            Audio Utama Kuis (Listening)
+          </span>
+          <audio controls src={quizData.audioUrl} className="w-full h-10 outline-none" controlsList="nodownload" />
+        </div>
+      )}
+
       {/* Header Bar: Status Navigasi & Timer */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
         <div>
@@ -420,6 +432,13 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
               <span className="text-xs text-slate-500 font-medium">{quizData.quizType === 'ESSAY' ? 'Isian Singkat' : 'Pilihan Ganda'}</span>
             </div>
 
+            {currentQuestion.audioUrl && (
+              <div className="mb-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <span className="text-[10px] text-slate-400 font-bold uppercase mb-2 block">Putar Rekaman Berikut:</span>
+                <audio controls src={currentQuestion.audioUrl} className="w-full h-10" controlsList="nodownload" />
+              </div>
+            )}
+
             {currentQuestion.imageUrl && (
               <img src={currentQuestion.imageUrl} alt="Ilustrasi soal" className="max-w-full h-auto max-h-64 rounded-xl border border-slate-700 shadow-sm" />
             )}
@@ -451,9 +470,16 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
                         : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:bg-slate-800/80 hover:text-white'
                     }`}
                   >
-                    <span>{opt.optionText}</span>
+                    <div className="flex flex-col gap-3 flex-1 min-w-0 pr-4">
+                      {opt.imageUrl && (
+                        <img src={opt.imageUrl} alt="Pilihan Jawaban" className="max-h-32 max-w-full object-contain rounded-lg border border-slate-700 bg-slate-900" />
+                      )}
+                      {opt.optionText && (
+                        <span className="text-sm font-medium leading-relaxed">{opt.optionText}</span>
+                      )}
+                    </div>
                     <div
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 mt-0.5 ${
                         isSelected
                           ? 'border-red-500 bg-red-600'
                           : 'border-slate-600'

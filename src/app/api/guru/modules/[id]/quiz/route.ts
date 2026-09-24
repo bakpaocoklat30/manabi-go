@@ -81,7 +81,8 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
         antiCheatMode: antiCheatMode || 'WARNING',
         allowRetake: typeof allowRetake === 'boolean' ? allowRetake : true,
         maxRetakes: maxRetakes ? Number(maxRetakes) : 3,
-        orderIndex: quizType === 'MULTIPLE_CHOICE' ? 1 : 2, // Sort order
+        audioUrl: body.audioUrl || null,
+        orderIndex: quizType === 'MULTIPLE_CHOICE' ? 1 : (quizType === 'ESSAY' ? 2 : 3), // Sort order
       };
 
       if (quiz) {
@@ -110,6 +111,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
               referenceAnswer: q.referenceAnswer || null,
               questionText: q.questionText,
               imageUrl: q.imageUrl || null,
+              audioUrl: q.audioUrl || null,
               explanation: q.explanation || null,
               orderIndex: i + 1,
             }
@@ -120,6 +122,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
               data: q.options.map((opt: any) => ({
                 questionId: newQ.id,
                 optionText: opt.optionText,
+                imageUrl: opt.imageUrl || null,
                 isCorrect: Boolean(opt.isCorrect)
               }))
             });

@@ -568,6 +568,13 @@ return (
             <Pencil className="w-3.5 h-3.5" />
             <span>Buat Kuis Isian (AI)</span>
           </Link>
+          <Link
+            href={`/guru/builder/${moduleId}/quiz?type=LISTENING`}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 border border-cyan-200 text-[11px] font-bold rounded-xl transition-all shadow-sm"
+          >
+            <Headphones className="w-3.5 h-3.5" />
+            <span>Buat Kuis Listening</span>
+          </Link>
         </div>
 
       {notification && (

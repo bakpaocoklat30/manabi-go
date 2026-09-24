@@ -142,10 +142,11 @@ model Quiz {
   randomizeOptions Boolean        @default(true) // Acak opsi jawaban
   randomizeQuestions Boolean      @default(true) // Acak urutan pertanyaan
   antiCheatMode    String         @default("WARNING") // OFF, WARNING, AUTO_SUBMIT
-  quizType         String         @default("MULTIPLE_CHOICE") // MULTIPLE_CHOICE, ESSAY
+  quizType         String         @default("MULTIPLE_CHOICE") // MULTIPLE_CHOICE, ESSAY, LISTENING
   allowRetake      Boolean        @default(true)
   maxRetakes       Int            @default(3)
   orderIndex       Int            @default(99)
+  audioUrl         String?        @db.Text
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -161,6 +162,7 @@ model Question {
   quiz         Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
   questionText String    @db.Text
   imageUrl     String?   @db.Text // Gambar untuk soal
+  audioUrl     String?   @db.Text // Audio khusus butir soal ini
   explanation  String?   @db.Text // Pembahasan jawaban
   orderIndex   Int       @default(0)
 
@@ -174,6 +176,7 @@ model Option {
   questionId String
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   optionText String   @db.Text
+  imageUrl   String?  @db.Text
   isCorrect  Boolean  @default(false)
 
   @@index([questionId])
