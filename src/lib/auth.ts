@@ -3,7 +3,15 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from '@/lib/prisma';
 import * as bcrypt from 'bcryptjs';
 
+const defaultSecret = 'super_secret_manabi_adb_token_key_2026';
+const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || defaultSecret;
+
+// Deteksi apakah aplikasi diakses lewat HTTPS atau HTTP biasa (IP publik)
+const useSecureCookies = process.env.NEXTAUTH_URL?.startsWith('https://') || false;
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  secret,
+  trustHost: true,
   session: {
     strategy: 'jwt',
     maxAge: 7 * 24 * 60 * 60, // 7 Hari
@@ -11,6 +19,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
     signIn: '/login',
     error: '/login',
+  },
+  // Konfigurasi cookie eksplisit agar browser tidak menolak cookie saat diakses via HTTP (IP Publik)
+  cookies: {
+    sessionToken: {
+      name: useSecureCookies ? '__Secure-authjs.session-token' : 'authjs.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: useSecureCookies,
+      },
+    },
+    callbackUrl: {
+      name: useSecureCookies ? '__Secure-authjs.callback-url' : 'authjs.callback-url',
+      options: {
+        sameSite: 'lax',
+        path: '/',
+        secure: useSecureCookies,
+      },
+    },
+    csrfToken: {
+      name: useSecureCookies ? '__Host-authjs.csrf-token' : 'authjs.csrf-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: useSecureCookies,
+      },
+    },
   },
   providers: [
     CredentialsProvider({

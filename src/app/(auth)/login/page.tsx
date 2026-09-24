@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
 import SakuraBackground from '@/components/shared/SakuraBackground';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Lock, User, AlertCircle, Loader2, Sparkles, GraduationCap } from 'lucide-react';
+import { Lock, User, AlertCircle, Loader2, Sparkles, GraduationCap, RefreshCw } from 'lucide-react';
 
 function LoginForm() {
   const router = useRouter();
@@ -15,6 +15,32 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Deteksi jika pengguna diarahkan kembali dengan parameter error
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      if (errorParam === 'CredentialsSignin') {
+        setErrorMessage('NISN/NIP atau Kata sandi tidak cocok.');
+      } else if (errorParam !== 'SessionRequired') {
+        setErrorMessage('Sesi akun Anda telah diperbarui setelah update. Silakan masukkan kata sandi kembali.');
+      }
+    }
+  }, [searchParams]);
+
+  // Tombol penyelamat otomatis: bersihkan cookie & local storage jika ada cache lama yang nyangkut
+  const handleResetSession = () => {
+    try {
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {}
+    window.location.href = '/login';
+  };
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -36,8 +62,10 @@ function LoginForm() {
         }
         setIsLoading(false);
       } else {
-        router.refresh();
-        router.push(callbackUrl);
+        // PENTING: Gunakan window.location.href (hard redirect), bukan router.push()!
+        // Hard redirect memastikan browser memuat halaman dengan session cookie baru
+        // dan mengabaikan client-router cache lama di Next.js App Router.
+        window.location.href = callbackUrl || '/';
       }
     } catch (error) {
       setErrorMessage('Terjadi kendala jaringan saat menghubungi server.');
@@ -135,7 +163,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full mt-2 py-3.5 px-4 bg-[#C62828] hover:bg-[#B71C1C] text-white font-bold rounded-xl shadow-lg shadow-[#C62828]/20 flex items-center justify-center gap-2 transition-all duration-200 transform active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full mt-2 py-3.5 px-4 bg-[#C62828] hover:bg-[#B71C1C] text-white font-bold rounded-xl shadow-lg shadow-[#C62828]/20 flex items-center justify-center gap-2 transition-all duration-200 transform active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
               {isLoading ? (
                 <>
@@ -150,6 +178,19 @@ function LoginForm() {
               )}
             </button>
           </form>
+
+          {/* Tombol Self-Healing: Bersihkan Cache & Sesi Otomatis */}
+          <div className="mt-4 pt-3 border-t border-stone-100 text-center">
+            <button
+              type="button"
+              onClick={handleResetSession}
+              className="text-[11px] text-stone-400 hover:text-stone-700 transition inline-flex items-center gap-1 cursor-pointer"
+              title="Klik jika mengalami kendala setelah pembaruan aplikasi"
+            >
+              <RefreshCw className="w-3 h-3" />
+              <span>Kendala Masuk? Segarkan Sesi & Bersihkan Cache</span>
+            </button>
+          </div>
         </div>
 
         {/* Footer info */}

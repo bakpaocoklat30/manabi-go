@@ -29,6 +29,8 @@ services:
       - .env
     environment:
       - AUTH_TRUST_HOST=true
+      - AUTH_SECRET=super_secret_manabi_adb_token_key_2026
+      - NEXTAUTH_SECRET=super_secret_manabi_adb_token_key_2026
       - TZ=Asia/Jakarta
     volumes:
       # Mount folder uploads untuk persistensi file dari siswa
