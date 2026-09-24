@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     // Pemetaan jawaban dan penghitungan skor
     let totalCorrect = 0;
     const reviewDetails = [];
-    const isPending = quiz.quizType === 'ESSAY';
+    const isPending = quiz.quizType === 'ESSAY' || quiz.questions.some((q) => q.type === 'ESSAY');
 
     for (const question of quiz.questions) {
       const studentAnswer = answers.find((a) => a.questionId === question.id);
