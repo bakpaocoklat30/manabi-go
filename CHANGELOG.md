@@ -36,10 +36,12 @@ Dokumen ini mencatat seluruh pembaruan, perbaikan bug, penyesuaian sistem, dan p
 ### 3. 🤖 Centang Samping Nama & Koreksi AI Sekaligus (Batch AI Grading)
 * **File Terkait:** `src/app/guru/koreksi-kuis/page.tsx`
 * **Peningkatan:**
+  * **Filter Judul Tugas / Kuis:** Dropdown filter khusus di bagian atas untuk menyaring antrean berdasarkan judul kuis tertentu, memudahkan jika ada banyak materi/tugas.
+  * **Koreksi Massal Berdasarkan Nomor Soal yang Dicentang:** Guru dapat memilih nomor soal mana saja (misal: Soal #1 dan Soal #2) yang ingin dikoreksi AI untuk seluruh 5 siswa (atau N siswa) yang dicentang. Sistem HANYA mengevaluasi nomor butir soal tersebut untuk semua siswa terpilih, sementara butir soal lainnya tetap mempertahankan nilai siswa sebelumnya.
   * **Kotak Centang (Checkbox) Siswa:** Disediakan checkbox di samping setiap nama siswa, serta opsi *Pilih Semua Siswa* / *Batalkan Semua*.
-  * **Tombol Koreksi Sekaligus:** Muncul bilah aksi `[ ⚡ Koreksi Sekaligus (N Siswa) ]` saat 1 atau lebih siswa dicentang.
+  * **Panel Kontrol Koreksi Massal:** Menampilkan jumlah siswa terpilih, judul kuis, serta bilah pilihan nomor soal yang akan dievaluasi.
   * **Modal Progress Real-time:** Menampilkan jendela progres otomatis:
-    1. Mengevaluasi seluruh butir soal esai siswa dengan Gemini AI.
+    1. Mengevaluasi nomor butir soal esai terpilih untuk tiap siswa dengan Gemini AI.
     2. Menghitung rata-rata nilai dan menentukan kelulusan KKM.
     3. Menyimpan nilai langsung ke database dengan status `GRADED`.
     4. Guru dapat memantau status tiap siswa secara langsung (*Antrean -> Menganalisis -> Menyimpan -> Selesai*).
