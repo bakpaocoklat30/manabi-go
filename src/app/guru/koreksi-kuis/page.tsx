@@ -12,15 +12,16 @@ import {
   Square, 
   Sparkles, 
   Calculator, 
-  ArrowRight,
-  BookOpen,
-  Award,
-  Search,
-  Users,
-  GraduationCap,
-  Filter,
-  Check,
-  CheckCheck
+  ArrowRight, 
+  Search, 
+  Users, 
+  Filter, 
+  Check, 
+  CheckCheck, 
+  History, 
+  Clock, 
+  X,
+  Play
 } from 'lucide-react';
 
 interface EvaluationItem {
@@ -32,17 +33,43 @@ interface EvaluationItem {
   suggestedScore?: number | null;
 }
 
+interface StudentSubmissionGroup {
+  key: string;
+  studentId: string;
+  quizId: string;
+  student: any;
+  quiz: any;
+  latestAttempt: any;
+  allAttempts: any[];
+}
+
+interface BatchProgressItem {
+  key: string;
+  attemptId: string;
+  studentName: string;
+  quizTitle: string;
+  status: 'WAITING' | 'ANALYZING' | 'SAVING' | 'DONE' | 'ERROR';
+  score?: number;
+  errorMsg?: string;
+}
+
 export default function KoreksiKuisPage() {
   const [attempts, setAttempts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Attempt aktif yang sedang dinilai di lembar sebelah kanan
   const [activeAttempt, setActiveAttempt] = useState<any | null>(null);
+  const [activeGroup, setActiveGroup] = useState<StudentSubmissionGroup | null>(null);
   
   // Filter & Search Antrean Siswa
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'GRADED'>('ALL');
   const [selectedClass, setSelectedClass] = useState<string>('ALL');
 
-  // Checklist nomor soal yang dipilih untuk dibantu AI
+  // Multi-select Siswa untuk Koreksi AI Sekaligus
+  const [selectedGroupKeys, setSelectedGroupKeys] = useState<Record<string, boolean>>({});
+
+  // Checklist nomor soal yang dipilih untuk dibantu AI (pada siswa yang aktif)
   const [selectedQuestions, setSelectedQuestions] = useState<Record<string, boolean>>({});
   
   // Poin/skor tiap butir soal (0 - 100)
@@ -56,6 +83,10 @@ export default function KoreksiKuisPage() {
   const [singleAiLoadingId, setSingleAiLoadingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
+
+  // Modal Status Koreksi Massal
+  const [batchProgress, setBatchProgress] = useState<BatchProgressItem[] | null>(null);
+  const [isBatchRunning, setIsBatchRunning] = useState(false);
   
   // Nilai akhir (bisa otomatis atau di-override guru)
   const [manualFinalScore, setManualFinalScore] = useState<number | null>(null);
@@ -79,9 +110,82 @@ export default function KoreksiKuisPage() {
     fetchAttempts();
   }, []);
 
-  // Saat guru memilih attempt siswa dari antrean
-  const handleSelectAttempt = (att: any) => {
+  // KELOMPOKKAN ATTEMPTS: 1 Rekaman per Siswa per Kuis (Mengambil yang paling akhir/terbaru)
+  const groupedSubmissions = useMemo(() => {
+    const map = new Map<string, StudentSubmissionGroup>();
+
+    // Urutkan seluruh attempt dari yang terbaru ke terlama
+    const sorted = [...attempts].sort((a, b) => {
+      const dateA = new Date(a.completedAt || a.startedAt).getTime();
+      const dateB = new Date(b.completedAt || b.startedAt).getTime();
+      return dateB - dateA;
+    });
+
+    sorted.forEach((att) => {
+      const sId = att.student?.id || att.studentId;
+      const qId = att.quiz?.id || att.quizId;
+      const key = `${sId}_${qId}`;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          studentId: sId,
+          quizId: qId,
+          student: att.student,
+          quiz: att.quiz,
+          latestAttempt: att,
+          allAttempts: [att],
+        });
+      } else {
+        map.get(key)!.allAttempts.push(att);
+      }
+    });
+
+    return Array.from(map.values());
+  }, [attempts]);
+
+  // Filter kelompok siswa berdasarkan pencarian, status kuis terbaru, dan kelas
+  const filteredGroups = useMemo(() => {
+    return groupedSubmissions.filter((group) => {
+      const studentName = group.student?.name?.toLowerCase() || '';
+      const identifier = group.student?.identifier?.toLowerCase() || '';
+      const quizTitle = group.quiz?.title?.toLowerCase() || '';
+      const className = group.student?.kelas?.name?.toLowerCase() || '';
+      const q = searchQuery.toLowerCase().trim();
+
+      const matchSearch = !q || studentName.includes(q) || identifier.includes(q) || quizTitle.includes(q) || className.includes(q);
+      const isPending = group.latestAttempt.status === 'PENDING_GRADING';
+      const matchStatus = statusFilter === 'ALL' || (statusFilter === 'PENDING' && isPending) || (statusFilter === 'GRADED' && !isPending);
+      const matchClass = selectedClass === 'ALL' || group.student?.kelas?.name === selectedClass;
+
+      return matchSearch && matchStatus && matchClass;
+    });
+  }, [groupedSubmissions, searchQuery, statusFilter, selectedClass]);
+
+  // Hitungan jumlah unik pending & graded
+  const pendingCount = useMemo(() => groupedSubmissions.filter(g => g.latestAttempt.status === 'PENDING_GRADING').length, [groupedSubmissions]);
+  const gradedCount = useMemo(() => groupedSubmissions.filter(g => g.latestAttempt.status === 'GRADED').length, [groupedSubmissions]);
+
+  // Daftar kelas unik dari seluruh attempt siswa untuk dropdown filter
+  const uniqueClasses = useMemo(() => {
+    const set = new Set<string>();
+    groupedSubmissions.forEach(g => {
+      const cls = g.student?.kelas?.name;
+      if (cls) set.add(cls);
+    });
+    return Array.from(set).sort();
+  }, [groupedSubmissions]);
+
+  // Saat guru memilih siswa dari antrean, inisialisasi lembar kerja
+  const handleSelectAttempt = (att: any, group?: StudentSubmissionGroup) => {
     setActiveAttempt(att);
+    if (group) {
+      setActiveGroup(group);
+    } else {
+      const found = groupedSubmissions.find(g => g.allAttempts.some(a => a.id === att.id));
+      if (found) setActiveGroup(found);
+    }
+
     setEvaluations({});
     setManualFinalScore(null);
     setSingleAiLoadingId(null);
@@ -92,7 +196,7 @@ export default function KoreksiKuisPage() {
     const isQuizEssay = att.quiz?.quizType === 'ESSAY';
     const essayQs = questions.filter((q: any) => q.type === 'ESSAY' || isQuizEssay);
     
-    // Default: Semua soal esai dicentang aktif untuk dibantu AI
+    // Default: Semua soal esai dicentang aktif untuk AI
     const initSelected: Record<string, boolean> = {};
     const initScores: Record<string, number> = {};
 
@@ -136,37 +240,6 @@ export default function KoreksiKuisPage() {
     return activeAttempt.quiz.questions.filter((q: any) => q.type === 'ESSAY' || isQuizEssay);
   }, [activeAttempt]);
 
-  // Daftar kelas unik dari seluruh attempt siswa untuk dropdown filter
-  const uniqueClasses = useMemo(() => {
-    const set = new Set<string>();
-    attempts.forEach(att => {
-      const cls = att.student?.kelas?.name;
-      if (cls) set.add(cls);
-    });
-    return Array.from(set).sort();
-  }, [attempts]);
-
-  // Filter antrean siswa berdasarkan pencarian, status, dan kelas
-  const filteredAttempts = useMemo(() => {
-    return attempts.filter(att => {
-      const studentName = att.student?.name?.toLowerCase() || '';
-      const identifier = att.student?.identifier?.toLowerCase() || '';
-      const quizTitle = att.quiz?.title?.toLowerCase() || '';
-      const className = att.student?.kelas?.name?.toLowerCase() || '';
-      const q = searchQuery.toLowerCase().trim();
-
-      const matchSearch = !q || studentName.includes(q) || identifier.includes(q) || quizTitle.includes(q) || className.includes(q);
-      const matchStatus = statusFilter === 'ALL' || (statusFilter === 'PENDING' && att.status === 'PENDING_GRADING') || (statusFilter === 'GRADED' && att.status === 'GRADED');
-      const matchClass = selectedClass === 'ALL' || att.student?.kelas?.name === selectedClass;
-
-      return matchSearch && matchStatus && matchClass;
-    });
-  }, [attempts, searchQuery, statusFilter, selectedClass]);
-
-  // Hitungan jumlah pending & graded untuk badge filter
-  const pendingCount = useMemo(() => attempts.filter(a => a.status === 'PENDING_GRADING').length, [attempts]);
-  const gradedCount = useMemo(() => attempts.filter(a => a.status === 'GRADED').length, [attempts]);
-
   // Hitungan Poin Otomatis
   const { totalPoints, maxTotalPoints, autoAverageScore } = useMemo(() => {
     const totalQ = essayQuestions.length || 1;
@@ -185,7 +258,7 @@ export default function KoreksiKuisPage() {
   // Nilai akhir yang dipakai (manual jika guru sengaja mengubahnya, atau otomatis dari rata-rata poin)
   const effectiveFinalScore = manualFinalScore !== null ? manualFinalScore : autoAverageScore;
 
-  // Toggle checklist nomor soal tertentu
+  // Toggle checklist nomor soal tertentu untuk AI (di lembar aktif)
   const handleToggleQuestionSelect = (qId: string) => {
     setSelectedQuestions(prev => ({
       ...prev,
@@ -202,10 +275,8 @@ export default function KoreksiKuisPage() {
     setSelectedQuestions(updated);
   };
 
-  // Hitung berapa nomor soal yang sedang dicentang untuk AI
   const selectedCount = essayQuestions.filter((q: any) => selectedQuestions[q.id]).length;
 
-  // Handler ubah poin butir soal manual
   const handleSetQuestionScore = (qId: string, score: number) => {
     const clamped = Math.max(0, Math.min(100, score));
     setQuestionScores(prev => ({
@@ -214,15 +285,126 @@ export default function KoreksiKuisPage() {
     }));
   };
 
-  // Scroll ke kartu soal tertentu
-  const scrollToQuestion = (qId: string) => {
-    const el = document.getElementById(`question-card-${qId}`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+  // ---------------------------------------------------------------------------
+  // MULTI-SELECT SISWA & KOREKSI SEKALIGUS (BATCH AI)
+  // ---------------------------------------------------------------------------
+  const handleToggleSelectStudent = (key: string) => {
+    setSelectedGroupKeys(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
   };
 
-  // Handler minta bantuan AI (Bisa per-nomor soal atau batch nomor soal yang dipilih)
+  const selectedStudentCount = Object.values(selectedGroupKeys).filter(Boolean).length;
+  const isAllStudentsSelected = filteredGroups.length > 0 && filteredGroups.every(g => selectedGroupKeys[g.key]);
+
+  const handleToggleSelectAllStudents = () => {
+    const nextState = !isAllStudentsSelected;
+    const nextKeys: Record<string, boolean> = {};
+    if (nextState) {
+      filteredGroups.forEach(g => {
+        nextKeys[g.key] = true;
+      });
+    }
+    setSelectedGroupKeys(nextKeys);
+  };
+
+  // Eksekusi Koreksi Massal dengan AI
+  const handleStartBatchGrading = async () => {
+    const targetGroups = filteredGroups.filter(g => selectedGroupKeys[g.key]);
+    if (targetGroups.length === 0) {
+      alert('Silakan centang minimal 1 siswa untuk dikoreksi sekaligus.');
+      return;
+    }
+
+    const initialProgress: BatchProgressItem[] = targetGroups.map(g => ({
+      key: g.key,
+      attemptId: g.latestAttempt.id,
+      studentName: g.student?.name || 'Siswa',
+      quizTitle: g.quiz?.title || 'Kuis',
+      status: 'WAITING',
+    }));
+
+    setBatchProgress(initialProgress);
+    setIsBatchRunning(true);
+
+    // Proses siswa satu per satu secara berurutan
+    for (let i = 0; i < targetGroups.length; i++) {
+      const g = targetGroups[i];
+      const attempt = g.latestAttempt;
+
+      // Update status item ke ANALYZING
+      setBatchProgress(prev => prev ? prev.map(p => p.key === g.key ? { ...p, status: 'ANALYZING' } : p) : null);
+
+      try {
+        // 1. Minta evaluasi AI untuk seluruh soal esai pada attempt ini
+        const resAi = await fetch(`/api/guru/koreksi-kuis/${attempt.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'ASK_AI' })
+        });
+        const dataAi = await resAi.json();
+
+        if (!resAi.ok) {
+          throw new Error(dataAi.message || 'Gagal memproses AI.');
+        }
+
+        const evals: EvaluationItem[] = dataAi.evaluations || [];
+        const questions = attempt.quiz?.questions || [];
+        const isQuizEssay = attempt.quiz?.quizType === 'ESSAY';
+        const essayQs = questions.filter((q: any) => q.type === 'ESSAY' || isQuizEssay);
+        const totalQ = essayQs.length || 1;
+
+        let totalScoreSum = 0;
+        const answersPayload: any[] = [];
+
+        essayQs.forEach((q: any) => {
+          const evalItem = evals.find(e => e.questionId === q.id);
+          const qScore = evalItem && typeof evalItem.suggestedScore === 'number' ? evalItem.suggestedScore : 75;
+          totalScoreSum += qScore;
+          answersPayload.push({
+            questionId: q.id,
+            score: qScore,
+            aiFeedback: evalItem?.aiFeedback || null,
+          });
+        });
+
+        const calculatedFinalScore = Math.round(totalScoreSum / totalQ);
+        const totalCorrect = answersPayload.filter(a => a.score >= 70).length;
+
+        // 2. Simpan nilai ke database (SAVE_GRADE)
+        setBatchProgress(prev => prev ? prev.map(p => p.key === g.key ? { ...p, status: 'SAVING' } : p) : null);
+
+        const resSave = await fetch(`/api/guru/koreksi-kuis/${attempt.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'SAVE_GRADE',
+            score: calculatedFinalScore,
+            totalCorrect,
+            answers: answersPayload
+          })
+        });
+
+        if (!resSave.ok) {
+          const saveErr = await resSave.json();
+          throw new Error(saveErr.message || 'Gagal menyimpan nilai.');
+        }
+
+        // Tandai sukses
+        setBatchProgress(prev => prev ? prev.map(p => p.key === g.key ? { ...p, status: 'DONE', score: calculatedFinalScore } : p) : null);
+
+      } catch (err: any) {
+        setBatchProgress(prev => prev ? prev.map(p => p.key === g.key ? { ...p, status: 'ERROR', errorMsg: err.message || 'Terjadi kesalahan' } : p) : null);
+      }
+    }
+
+    setIsBatchRunning(false);
+    setSelectedGroupKeys({});
+    fetchAttempts();
+  };
+
+  // Minta Bantuan AI untuk Siswa yang Sedang Dibuka
   const handleAskAI = async (specificQuestionId?: string) => {
     if (!activeAttempt) return;
     setAiSuccessMessage(null);
@@ -265,7 +447,7 @@ export default function KoreksiKuisPage() {
           return next;
         });
 
-        // 2. PASTI LANGSUNG ISI SKOR PER-SOAL SECARA OTOMATIS!
+        // 2. PASTI LANGSUNG ISI SKOR PER-SOAL SECARA OTOMATIS
         setQuestionScores(prev => {
           const nextScores = { ...prev };
           data.evaluations.forEach((item: EvaluationItem) => {
@@ -280,7 +462,7 @@ export default function KoreksiKuisPage() {
         setManualFinalScore(null);
 
         const countUpdated = data.evaluations.length;
-        setAiSuccessMessage(`✨ Berhasil! Analisis AI selesai dan skor ${countUpdated} soal telah terisi otomatis.`);
+        setAiSuccessMessage(`✨ Berhasil! Analisis AI selesai dan skor ${countUpdated} butir soal telah terisi otomatis.`);
       }
     } catch (err: any) {
       alert(err.message || 'Terjadi gangguan saat memanggil layanan Google Gemini AI.');
@@ -290,7 +472,7 @@ export default function KoreksiKuisPage() {
     }
   };
 
-  // Simpan nilai final
+  // Simpan nilai final (Attempt yang sedang aktif)
   const handleSaveGrade = async () => {
     if (!activeAttempt) return;
     setIsSaving(true);
@@ -303,7 +485,6 @@ export default function KoreksiKuisPage() {
         aiFeedback: evaluations[ans.questionId]?.aiFeedback || null,
       }));
 
-      // Tambahkan jawaban untuk soal esai yang mungkin belum ada di answers
       essayQuestions.forEach((q: any) => {
         const found = updatedAnswers.find((a: any) => a.questionId === q.id);
         if (!found) {
@@ -335,6 +516,7 @@ export default function KoreksiKuisPage() {
 
       alert('✅ Nilai kuis berhasil disimpan dan status siswa telah diperbarui menjadi GRADED!');
       setActiveAttempt(null);
+      setActiveGroup(null);
       setEvaluations({});
       fetchAttempts();
     } catch (e: any) {
@@ -355,18 +537,18 @@ export default function KoreksiKuisPage() {
               Asisten Guru Koreksi Kuis
             </span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-              Semua Siswa Terbuka
+              1 Baris per Siswa (Terkini)
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900">Koreksi Kuis Esai</h1>
           <p className="text-xs text-slate-500 mt-1">
-            Pilih nomor soal yang ingin dianalisis oleh AI. Skor akan langsung otomatis terisi ke lembar penilaian siswa.
+            Centang siswa di sebelah kiri untuk mengoreksi beberapa siswa sekaligus dengan AI, atau klik nama siswa untuk melihat seluruh riwayat jawabannya.
           </p>
         </div>
         <button 
           onClick={fetchAttempts} 
-          disabled={loading}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition"
+          disabled={loading || isBatchRunning}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
           title="Segarkan data seluruh siswa"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -375,10 +557,34 @@ export default function KoreksiKuisPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Kolom Kiri: Antrean Seluruh Siswa (4 kolom) */}
+        {/* Kolom Kiri: Antrean Siswa (1 Baris per Siswa) (4 kolom) */}
         <div className="lg:col-span-4 space-y-3">
-          {/* Filter Bar */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs space-y-2.5">
+          {/* Banner Aksi Batch jika ada siswa yang dicentang */}
+          {selectedStudentCount > 0 && (
+            <div className="p-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl text-white shadow-lg shadow-indigo-600/25 flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center font-bold text-xs">
+                  {selectedStudentCount}
+                </span>
+                <div>
+                  <div className="text-xs font-black leading-none">Siswa Dipilih</div>
+                  <div className="text-[10px] text-indigo-100 mt-0.5">Siap dikoreksi dengan AI</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleStartBatchGrading}
+                disabled={isBatchRunning}
+                className="px-3 py-2 bg-white text-indigo-700 hover:bg-indigo-50 active:scale-95 rounded-xl text-xs font-black shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600 fill-indigo-600" />
+                <span>Koreksi Sekaligus ({selectedStudentCount})</span>
+              </button>
+            </div>
+          )}
+
+          {/* Filter Bar & Checkbox Select All */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs space-y-2.5">
             {/* Search Input */}
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -387,7 +593,7 @@ export default function KoreksiKuisPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Cari nama siswa, NISN, atau kuis..."
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white text-slate-800"
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:bg-white text-slate-800"
               />
             </div>
 
@@ -402,7 +608,7 @@ export default function KoreksiKuisPage() {
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                Semua ({attempts.length})
+                Semua ({groupedSubmissions.length})
               </button>
               <button
                 type="button"
@@ -428,84 +634,133 @@ export default function KoreksiKuisPage() {
               </button>
             </div>
 
-            {/* Dropdown Filter Kelas jika ada */}
-            {uniqueClasses.length > 0 && (
-              <div className="flex items-center gap-2 pt-1 text-xs">
-                <span className="text-[11px] font-semibold text-slate-400 whitespace-nowrap">Kelas:</span>
-                <select
-                  value={selectedClass}
-                  onChange={(e) => setSelectedClass(e.target.value)}
-                  className="flex-1 py-1 px-2 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none"
-                >
-                  <option value="ALL">Semua Kelas ({attempts.length} Siswa)</option>
-                  {uniqueClasses.map((cls) => (
-                    <option key={cls} value={cls}>{cls}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            {/* Sub-bar: Pilih Semua & Filter Kelas */}
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 text-xs">
+              <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isAllStudentsSelected}
+                  onChange={handleToggleSelectAllStudents}
+                  className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+                />
+                <span className="text-[11px] font-bold text-slate-700">
+                  {isAllStudentsSelected ? 'Batalkan Semua' : 'Pilih Semua Siswa'}
+                </span>
+              </label>
+
+              {uniqueClasses.length > 0 && (
+                <div className="flex items-center gap-1 text-xs">
+                  <select
+                    value={selectedClass}
+                    onChange={(e) => setSelectedClass(e.target.value)}
+                    className="py-1 px-2 text-[11px] bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-semibold focus:outline-none"
+                  >
+                    <option value="ALL">Semua Kelas</option>
+                    {uniqueClasses.map((cls) => (
+                      <option key={cls} value={cls}>{cls}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
           </div>
           
+          {/* Daftar Kelompok Siswa */}
           {loading ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
-              <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600 mb-2" />
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-indigo-600 mb-2" />
               <p className="text-xs text-slate-400">Memuat daftar siswa...</p>
             </div>
-          ) : filteredAttempts.length === 0 ? (
+          ) : filteredGroups.length === 0 ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center shadow-xs">
               <Users className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-              <h4 className="text-sm font-bold text-slate-800">Tidak Ada Siswa Ditemukan</h4>
-              <p className="text-xs text-slate-500 mt-1">Coba sesuaikan kata kunci pencarian atau filter status Anda.</p>
+              <h4 className="text-sm font-bold text-slate-800">Tidak Ada Siswa</h4>
+              <p className="text-xs text-slate-500 mt-1">Coba sesuaikan kata kunci pencarian atau filter status.</p>
             </div>
           ) : (
             <div className="space-y-2 max-h-[75vh] overflow-y-auto pr-1">
-              {filteredAttempts.map(att => {
-                const isSelected = activeAttempt?.id === att.id;
-                const isPending = att.status === 'PENDING_GRADING';
+              {filteredGroups.map(group => {
+                const isGroupActive = activeGroup?.key === group.key;
+                const latest = group.latestAttempt;
+                const isPending = latest.status === 'PENDING_GRADING';
+                const hasMultiple = group.allAttempts.length > 1;
+                const isChecked = Boolean(selectedGroupKeys[group.key]);
+
                 return (
                   <div 
-                    key={att.id} 
-                    onClick={() => handleSelectAttempt(att)}
-                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                      isSelected 
+                    key={group.key} 
+                    onClick={() => handleSelectAttempt(latest, group)}
+                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                      isGroupActive 
                         ? 'bg-blue-50/90 border-blue-500 shadow-sm ring-2 ring-blue-500/20' 
-                        : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-xs'
+                        : isChecked
+                          ? 'bg-indigo-50/40 border-indigo-300'
+                          : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-xs'
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="font-bold text-sm text-slate-900 truncate">
-                          {att.student?.name || 'Siswa'}
-                        </div>
-                        <div className="text-[11px] text-slate-500 truncate mt-0.5 flex items-center gap-1.5">
-                          {att.student?.kelas?.name && (
-                            <span className="font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.2 rounded text-[10px]">
-                              {att.student.kelas.name}
+                    <div className="flex items-start gap-2.5">
+                      {/* Checkbox di samping nama siswa untuk koreksi massal */}
+                      <div 
+                        className="pt-0.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input 
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleSelectStudent(group.key)}
+                          className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
+                          title="Centang untuk koreksi AI sekaligus"
+                        />
+                      </div>
+
+                      {/* Info Siswa & Status */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-1.5">
+                          <div className="font-black text-sm text-slate-900 truncate">
+                            {group.student?.name || 'Siswa'}
+                          </div>
+
+                          {isPending ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+                              Perlu Koreksi
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap font-mono">
+                              Nilai: {latest.score ?? 0}
                             </span>
                           )}
-                          <span className="font-mono text-slate-400">@{att.student?.identifier || '-'}</span>
                         </div>
+
+                        <div className="text-[11px] text-slate-500 truncate mt-0.5 flex items-center gap-1.5">
+                          {group.student?.kelas?.name && (
+                            <span className="font-bold text-blue-600 bg-blue-50 px-1.5 py-0.2 rounded text-[10px]">
+                              {group.student.kelas.name}
+                            </span>
+                          )}
+                          <span className="font-mono text-slate-400">@{group.student?.identifier || '-'}</span>
+                        </div>
+
                         <div className="text-xs text-slate-700 font-medium truncate mt-1">
-                          {att.quiz?.title || 'Kuis Evaluasi'}
+                          {group.quiz?.title || 'Kuis Evaluasi'}
+                        </div>
+
+                        {/* Indikator Riwayat Jika Siswa Mengirim Lebih dari 1 Kali */}
+                        {hasMultiple && (
+                          <div className="mt-1.5">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
+                              <History className="w-3 h-3" />
+                              {group.allAttempts.length}x Pengiriman (Klik untuk riwayat)
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="text-[10px] text-slate-400 mt-2 flex items-center justify-between border-t border-slate-100 pt-1.5">
+                          <span>Terakhir: {new Date(latest.completedAt || latest.startedAt).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                          <span className="font-bold text-blue-600 flex items-center gap-0.5">
+                            Buka <ArrowRight className="w-3 h-3" />
+                          </span>
                         </div>
                       </div>
-                      
-                      {isPending ? (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
-                          Perlu Koreksi
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap font-mono">
-                          Nilai: {att.score ?? 0}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="text-[10px] text-slate-400 mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2">
-                      <span>{new Date(att.completedAt || att.startedAt).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                      <span className="font-semibold text-blue-600 flex items-center gap-0.5">
-                        Koreksi Sekarang <ArrowRight className="w-3 h-3" />
-                      </span>
                     </div>
                   </div>
                 );
@@ -514,9 +769,9 @@ export default function KoreksiKuisPage() {
           )}
         </div>
 
-        {/* Kolom Kanan: Lembar Penilaian & Evaluasi AI (8 kolom) */}
+        {/* Kolom Kanan: Lembar Penilaian & Riwayat Pengiriman (8 kolom) */}
         <div className="lg:col-span-8">
-          {activeAttempt ? (
+          {activeAttempt && activeGroup ? (
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
               {/* Header Editor Attempt Siswa */}
               <div className="p-6 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -525,15 +780,15 @@ export default function KoreksiKuisPage() {
                     <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
                       Lembar Koreksi Siswa
                     </span>
-                    {activeAttempt.student?.kelas?.name && (
+                    {activeGroup.student?.kelas?.name && (
                       <span className="text-[10px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded-md">
-                        {activeAttempt.student.kelas.name}
+                        {activeGroup.student.kelas.name}
                       </span>
                     )}
                   </div>
-                  <h2 className="font-black text-xl text-slate-900 mt-1">{activeAttempt.student?.name}</h2>
+                  <h2 className="font-black text-xl text-slate-900 mt-1">{activeGroup.student?.name}</h2>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Kuis: <strong className="text-slate-700">{activeAttempt.quiz?.title}</strong> • KKM: <span className="font-mono font-bold text-slate-700">{activeAttempt.quiz?.passingScore || 75}</span> Poin
+                    Kuis: <strong className="text-slate-700">{activeGroup.quiz?.title}</strong> • KKM: <span className="font-mono font-bold text-slate-700">{activeGroup.quiz?.passingScore || 75}</span> Poin
                   </p>
                 </div>
 
@@ -543,10 +798,52 @@ export default function KoreksiKuisPage() {
                       ? 'bg-amber-50 text-amber-700 border-amber-200'
                       : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   }`}>
-                    {activeAttempt.status === 'PENDING_GRADING' ? 'Status: Menunggu Koreksi' : `Status: Selesai (${activeAttempt.score} Poin)`}
+                    {activeAttempt.status === 'PENDING_GRADING' ? 'Status: Perlu Koreksi' : `Status: Dinilai (${activeAttempt.score} Poin)`}
                   </span>
                 </div>
               </div>
+
+              {/* BILAH RIWAYAT PENGIRIMAN SISWA (JIKA LEBIH DARI 1x PENGIRIMAN) */}
+              {activeGroup.allAttempts.length > 1 && (
+                <div className="flex flex-wrap items-center gap-2 px-6 py-3 bg-indigo-50/70 border-b border-indigo-100 text-xs">
+                  <span className="font-black text-slate-700 flex items-center gap-1.5">
+                    <History className="w-4 h-4 text-indigo-600" />
+                    Riwayat Pengiriman ({activeGroup.allAttempts.length} Percobaan):
+                  </span>
+                  <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+                    {activeGroup.allAttempts.map((att, idx) => {
+                      const attemptNum = activeGroup.allAttempts.length - idx;
+                      const isLatest = idx === 0;
+                      const isCurrentActive = activeAttempt.id === att.id;
+
+                      return (
+                        <button
+                          key={att.id}
+                          type="button"
+                          onClick={() => handleSelectAttempt(att, activeGroup)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            isCurrentActive
+                              ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-500/20'
+                              : 'bg-white text-slate-700 hover:bg-indigo-50/60 border border-slate-300'
+                          }`}
+                        >
+                          <span>Percobaan #{attemptNum}</span>
+                          {isLatest && (
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
+                              isCurrentActive ? 'bg-indigo-900 text-indigo-100' : 'bg-emerald-500 text-white'
+                            }`}>
+                              Terbaru
+                            </span>
+                          )}
+                          <span className="font-mono text-[10px] opacity-80">
+                            ({att.status === 'PENDING_GRADING' ? 'Belum Dinilai' : `${att.score ?? 0}p`})
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Toast Notifikasi Berhasil AI */}
               {aiSuccessMessage && (
@@ -557,14 +854,14 @@ export default function KoreksiKuisPage() {
                   </span>
                   <button 
                     onClick={() => setAiSuccessMessage(null)}
-                    className="text-emerald-600 hover:text-emerald-900 text-xs px-2 py-0.5 rounded"
+                    className="text-emerald-600 hover:text-emerald-900 text-xs px-2 py-0.5 rounded cursor-pointer"
                   >
                     Tutup
                   </button>
                 </div>
               )}
 
-              {/* PANEL PILIHAN NOMOR SOAL UNTUK AI (REQUIREMENT UTAMA) */}
+              {/* PANEL PILIHAN NOMOR SOAL UNTUK AI */}
               <div className="p-5 bg-gradient-to-r from-indigo-50/80 to-purple-50/80 border-b border-indigo-100 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -582,7 +879,7 @@ export default function KoreksiKuisPage() {
                     <button
                       type="button"
                       onClick={() => handleSelectAllQuestions(true)}
-                      className="px-2.5 py-1 rounded-lg bg-white border border-indigo-200 text-indigo-700 font-bold hover:bg-indigo-50 transition text-[11px] flex items-center gap-1 shadow-2xs"
+                      className="px-2.5 py-1 rounded-lg bg-white border border-indigo-200 text-indigo-700 font-bold hover:bg-indigo-50 transition text-[11px] flex items-center gap-1 shadow-2xs cursor-pointer"
                     >
                       <CheckCheck className="w-3.5 h-3.5" />
                       Pilih Semua Nomor
@@ -590,7 +887,7 @@ export default function KoreksiKuisPage() {
                     <button
                       type="button"
                       onClick={() => handleSelectAllQuestions(false)}
-                      className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 font-medium hover:bg-slate-100 transition text-[11px]"
+                      className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 font-medium hover:bg-slate-100 transition text-[11px] cursor-pointer"
                     >
                       Batalkan Pilihan
                     </button>
@@ -643,7 +940,7 @@ export default function KoreksiKuisPage() {
                     );
                   })}
 
-                  {/* Tombol Eksekusi Batch AI */}
+                  {/* Tombol Eksekusi Batch AI untuk Siswa Ini */}
                   <button
                     type="button"
                     onClick={() => handleAskAI()}
@@ -716,7 +1013,7 @@ export default function KoreksiKuisPage() {
                             type="button"
                             onClick={() => handleAskAI(q.id)}
                             disabled={isSingleLoading || isAskingBatchAI}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-indigo-50 text-indigo-700 border border-slate-200 hover:border-indigo-300 rounded-lg text-[11px] font-bold transition shadow-2xs"
+                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-indigo-50 text-indigo-700 border border-slate-200 hover:border-indigo-300 rounded-lg text-[11px] font-bold transition shadow-2xs cursor-pointer"
                           >
                             {isSingleLoading ? (
                               <>
@@ -813,28 +1110,28 @@ export default function KoreksiKuisPage() {
                               <button 
                                 type="button" 
                                 onClick={() => handleSetQuestionScore(q.id, 0)} 
-                                className="px-2 py-1 rounded bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 transition"
+                                className="px-2 py-1 rounded bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 transition cursor-pointer"
                               >
                                 0
                               </button>
                               <button 
                                 type="button" 
                                 onClick={() => handleSetQuestionScore(q.id, 50)} 
-                                className="px-2 py-1 rounded bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-600 border border-slate-200 transition"
+                                className="px-2 py-1 rounded bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-600 border border-slate-200 transition cursor-pointer"
                               >
                                 50
                               </button>
                               <button 
                                 type="button" 
                                 onClick={() => handleSetQuestionScore(q.id, 75)} 
-                                className="px-2 py-1 rounded bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200 transition"
+                                className="px-2 py-1 rounded bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200 transition cursor-pointer"
                               >
                                 75
                               </button>
                               <button 
                                 type="button" 
                                 onClick={() => handleSetQuestionScore(q.id, 100)} 
-                                className="px-2 py-1 rounded bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 border border-slate-200 transition"
+                                className="px-2 py-1 rounded bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 border border-slate-200 transition cursor-pointer"
                               >
                                 100
                               </button>
@@ -897,7 +1194,7 @@ export default function KoreksiKuisPage() {
                         <button
                           type="button"
                           onClick={() => setManualFinalScore(null)}
-                          className="px-2 py-1 text-[10px] font-semibold text-indigo-400 hover:text-indigo-300 underline"
+                          className="px-2 py-1 text-[10px] font-semibold text-indigo-400 hover:text-indigo-300 underline cursor-pointer"
                           title="Kembalikan ke rata-rata otomatis poin soal"
                         >
                           Reset
@@ -922,12 +1219,114 @@ export default function KoreksiKuisPage() {
               <AlertCircle className="w-12 h-12 text-slate-300 mb-3" />
               <h3 className="font-bold text-base text-slate-800">Pilih Siswa dari Antrean</h3>
               <p className="text-xs text-slate-500 max-w-sm mt-1">
-                Silakan pilih salah satu siswa di sebelah kiri untuk melihat jawaban esai dan melakukan koreksi dengan bantuan AI.
+                Silakan pilih salah satu siswa di sebelah kiri untuk melihat jawaban esai dan riwayat pengirimannya, atau centang beberapa siswa untuk mengoreksi secara massal.
               </p>
             </div>
           )}
         </div>
       </div>
+
+      {/* MODAL PROGRESS KOREKSI MASSAL AI */}
+      {batchProgress && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                  <Bot className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-sm">Koreksi AI Massal Berjalan</h3>
+                  <p className="text-[11px] text-slate-500">
+                    {isBatchRunning ? 'Sedang mengevaluasi jawaban siswa...' : 'Semua siswa selesai dievaluasi!'}
+                  </p>
+                </div>
+              </div>
+
+              {!isBatchRunning && (
+                <button
+                  type="button"
+                  onClick={() => setBatchProgress(null)}
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+
+            {/* List Progress Siswa */}
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              {batchProgress.map((item, idx) => (
+                <div 
+                  key={item.key} 
+                  className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-3 ${
+                    item.status === 'DONE' 
+                      ? 'bg-emerald-50/70 border-emerald-200' 
+                      : item.status === 'ERROR'
+                        ? 'bg-red-50/70 border-red-200'
+                        : item.status === 'ANALYZING' || item.status === 'SAVING'
+                          ? 'bg-indigo-50 border-indigo-300'
+                          : 'bg-slate-50 border-slate-200'
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-slate-900 truncate">
+                      {idx + 1}. {item.studentName}
+                    </div>
+                    <div className="text-[10px] text-slate-500 truncate">
+                      {item.quizTitle}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {item.status === 'WAITING' && (
+                      <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> Antrean
+                      </span>
+                    )}
+                    {item.status === 'ANALYZING' && (
+                      <span className="text-[10px] font-bold text-indigo-600 flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Menganalisis...
+                      </span>
+                    )}
+                    {item.status === 'SAVING' && (
+                      <span className="text-[10px] font-bold text-blue-600 flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Menyimpan...
+                      </span>
+                    )}
+                    {item.status === 'DONE' && (
+                      <span className="text-[11px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Nilai: {item.score}
+                      </span>
+                    )}
+                    {item.status === 'ERROR' && (
+                      <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-lg flex items-center gap-1" title={item.errorMsg}>
+                        <AlertCircle className="w-3.5 h-3.5 text-red-500" /> Gagal
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Tombol Tutup / Selesai */}
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500 font-medium">
+                {batchProgress.filter(p => p.status === 'DONE').length} dari {batchProgress.length} siswa selesai
+              </span>
+
+              <button
+                type="button"
+                disabled={isBatchRunning}
+                onClick={() => setBatchProgress(null)}
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+              >
+                {isBatchRunning ? 'Sedang Memproses...' : 'Tutup & Terapkan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
