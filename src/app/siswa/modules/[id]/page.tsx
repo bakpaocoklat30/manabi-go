@@ -248,16 +248,26 @@ export default async function SiswaModuleDetailPage({ params }: ModulePageProps)
 
             <div className="flex flex-col sm:items-end gap-2 w-full sm:w-auto">
               {bestAttempt ? (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs font-bold">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>Skor Terbaik: {bestAttempt.score} / 100</span>
-                </div>
+                bestAttempt.status === 'PENDING_GRADING' ? (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-950/60 border border-blue-800 text-blue-300 text-xs font-bold">
+                    <Clock className="w-4 h-4 text-blue-400" />
+                    <span>Menunggu Koreksi Guru</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs font-bold">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Skor Terbaik: {bestAttempt.score} / 100</span>
+                  </div>
+                )
               ) : null}
 
-              {isRetakeBlocked ? (
-                <div className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-slate-800 text-slate-400 text-xs font-bold cursor-not-allowed w-full sm:w-auto border border-slate-700" title="Batas maksimal pengulangan telah habis">
+              {isRetakeBlocked || bestAttempt?.status === 'PENDING_GRADING' ? (
+                <div 
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-slate-800 text-slate-400 text-xs font-bold cursor-not-allowed w-full sm:w-auto border border-slate-700" 
+                  title={bestAttempt?.status === 'PENDING_GRADING' ? 'Jawaban Anda sedang dikoreksi oleh guru' : 'Batas maksimal pengulangan telah habis'}
+                >
                   <FileEdit className="w-4 h-4 opacity-50" />
-                  <span>Pengulangan Ditutup</span>
+                  <span>{bestAttempt?.status === 'PENDING_GRADING' ? 'Sedang Dikoreksi Guru' : 'Pengulangan Ditutup'}</span>
                 </div>
               ) : (
                 <Link

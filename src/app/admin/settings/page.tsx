@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, Loader2, CheckCircle2, AlertCircle, Cloud, Database, ExternalLink, FileArchive, Download, Bot } from 'lucide-react';
+import { Settings, Save, Loader2, CheckCircle2, AlertCircle, Cloud, Database, ExternalLink, FileArchive, Download, Bot, RefreshCw } from 'lucide-react';
 
 export default function SettingsPage() {
   const [formData, setFormData] = useState({
@@ -153,8 +153,91 @@ export default function SettingsPage() {
             Pengaturan Sistem & API
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Konfigurasi kredensial pihak ketiga (Google Drive Backup) dan integrasi layanan lainnya.
+            Konfigurasi kredensial pihak ketiga (Google Drive Backup, Google Gemini AI) dan integrasi layanan lainnya.
           </p>
+        </div>
+      </div>
+
+      {/* Pintasan Cepat Google APIs & Cloud Console */}
+      <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/70 to-purple-50/80 border border-blue-200/70 rounded-2xl p-5 shadow-xs">
+        <div className="flex items-center gap-2.5 mb-3.5">
+          <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+            <ExternalLink className="w-3.5 h-3.5" />
+          </div>
+          <div>
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+              Pintasan Cepat Google API & Console
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Akses langsung ke portal resmi Google untuk membuat project, mengaktifkan API, dan mengambil kunci akses.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <a
+            href="https://aistudio.google.com/app/apikey"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2.5 p-3 bg-white/90 hover:bg-white border border-indigo-200/80 hover:border-indigo-400 rounded-xl text-xs font-semibold text-slate-700 hover:text-indigo-700 shadow-2xs hover:shadow-xs transition-all group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0 group-hover:bg-indigo-100 transition-colors">
+              <Bot className="w-4 h-4 text-indigo-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="block truncate font-bold text-slate-800 group-hover:text-indigo-600">Google AI Studio</span>
+              <span className="block text-[10px] text-slate-400 truncate">Dapatkan Gemini API Key</span>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-600 flex-shrink-0" />
+          </a>
+
+          <a
+            href="https://console.cloud.google.com/apis/credentials"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2.5 p-3 bg-white/90 hover:bg-white border border-blue-200/80 hover:border-blue-400 rounded-xl text-xs font-semibold text-slate-700 hover:text-blue-700 shadow-2xs hover:shadow-xs transition-all group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-100 transition-colors">
+              <Cloud className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="block truncate font-bold text-slate-800 group-hover:text-blue-600">Cloud Credentials</span>
+              <span className="block text-[10px] text-slate-400 truncate">OAuth Client ID & Secret</span>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-600 flex-shrink-0" />
+          </a>
+
+          <a
+            href="https://console.cloud.google.com/apis/library/drive.googleapis.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2.5 p-3 bg-white/90 hover:bg-white border border-emerald-200/80 hover:border-emerald-400 rounded-xl text-xs font-semibold text-slate-700 hover:text-emerald-700 shadow-2xs hover:shadow-xs transition-all group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 transition-colors">
+              <Database className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="block truncate font-bold text-slate-800 group-hover:text-emerald-600">Google Drive API</span>
+              <span className="block text-[10px] text-slate-400 truncate">Aktifkan API di Console</span>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-slate-300 group-hover:text-emerald-600 flex-shrink-0" />
+          </a>
+
+          <a
+            href="https://developers.google.com/oauthplayground"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2.5 p-3 bg-white/90 hover:bg-white border border-amber-200/80 hover:border-amber-400 rounded-xl text-xs font-semibold text-slate-700 hover:text-amber-700 shadow-2xs hover:shadow-xs transition-all group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0 group-hover:bg-amber-100 transition-colors">
+              <Settings className="w-4 h-4 text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="block truncate font-bold text-slate-800 group-hover:text-amber-600">OAuth Playground</span>
+              <span className="block text-[10px] text-slate-400 truncate">Ambil Refresh Token</span>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-600 flex-shrink-0" />
+          </a>
         </div>
       </div>
 
@@ -218,7 +301,18 @@ export default function SettingsPage() {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Google Client ID</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-semibold text-slate-500 uppercase">Google Client ID</label>
+                  <a 
+                    href="https://console.cloud.google.com/apis/credentials" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-700 hover:underline font-medium"
+                  >
+                    <span>Buka Cloud Credentials</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
                 <input type="text" name="gdrive_client_id" value={formData.gdrive_client_id} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs font-mono focus:outline-none focus:border-blue-500" placeholder="1234567890-xxx.apps.googleusercontent.com" />
               </div>
               <div>
@@ -227,7 +321,19 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Refresh Token (Offline Access)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-semibold text-slate-500 uppercase">Refresh Token (Offline Access)</label>
+                  <a 
+                    href="https://developers.google.com/oauthplayground" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[10px] text-amber-600 hover:text-amber-700 hover:underline font-medium"
+                    title="Gunakan scope https://www.googleapis.com/auth/drive"
+                  >
+                    <span>Buka OAuth 2.0 Playground</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
                 <input type="password" name="gdrive_refresh_token" value={formData.gdrive_refresh_token} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs font-mono focus:outline-none focus:border-blue-500" placeholder="1//0eX..." />
               </div>
               <div className="pt-2 border-t border-slate-100">
@@ -264,15 +370,26 @@ export default function SettingsPage() {
                   <p className="text-[10px] text-slate-500">Mencadangkan seluruh data sistem (Akun, Kelas, Tugas, dll).</p>
                 </div>
               </div>
-              <button 
-                type="button"
-                onClick={handleBackupNow}
-                disabled={isBackingUp || driveStatus.status !== 'CONNECTED'}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-sm transition-all"
-              >
-                {isBackingUp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Database className="w-3.5 h-3.5" />}
-                <span>Backup Sekarang</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <a
+                  href="/api/admin/settings/backup"
+                  className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-2xs"
+                  title="Unduh seluruh data database dan berkas unggahan langsung ke laptop/komputer Anda (Format ZIP)"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh ZIP Langsung</span>
+                </a>
+                <button 
+                  type="button"
+                  onClick={handleBackupNow}
+                  disabled={isBackingUp || driveStatus.status !== 'CONNECTED'}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-sm transition-all"
+                  title="Cadangkan seluruh data dan kirim ke Google Drive"
+                >
+                  {isBackingUp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Database className="w-3.5 h-3.5" />}
+                  <span>Backup ke Drive</span>
+                </button>
+              </div>
             </div>
             
             <div className="pt-2 border-t border-slate-100">
@@ -288,7 +405,9 @@ export default function SettingsPage() {
                 <option value="daily">Setiap Hari (Daily - Midnight)</option>
                 <option value="weekly">Setiap Minggu (Weekly - Sunday)</option>
               </select>
-              <p className="text-[9px] text-slate-400 mt-1.5">File backup akan disimpan dalam format ZIP (berisi Data JSON + Folder Uploads Siswa) ke dalam folder "Backup" di Drive Bersama Anda.</p>
+              <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
+                Mencakup 100% data: <strong>14 Tabel Database</strong> (Akun Guru/Siswa/Admin, Kelas, Modul, Item Modul, Kuis, Soal, Opsi Jawaban, Nilai & Percobaan Kuis, Tugas Siswa, Absensi, Log Akses, Hubungan Guru-Kelas, Pengaturan) + <strong>Seluruh Berkas Unggahan</strong> (Foto tugas siswa & lembar coretan guru).
+              </p>
             </div>
             <div className="pt-2 border-t border-slate-100 mt-6">
               <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-3">Daftar Backup Tersedia di Drive</label>
@@ -299,24 +418,35 @@ export default function SettingsPage() {
                   backups.map(b => (
                     <div key={b.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
                       <div className="flex items-center gap-3">
-                        <FileArchive className="w-5 h-5 text-emerald-500" />
-                        <div>
-                          <p className="text-xs font-bold text-slate-700">{b.name}</p>
+                        <FileArchive className="w-5 h-5 text-emerald-500 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-700 truncate max-w-xs">{b.name}</p>
                           <p className="text-[10px] text-slate-500">{new Date(b.createdAt).toLocaleString('id-ID')} • {(Number(b.sizeBytes) / (1024*1024)).toFixed(2)} MB</p>
                         </div>
                       </div>
-                      <button 
-                        type="button"
-                        onClick={() => handleRestore(b.id)}
-                        disabled={restoringId === b.id}
-                        className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-[10px] font-bold rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                      >
-                        {restoringId === b.id ? (
-                          <><Loader2 className="w-3 h-3 animate-spin" /> Memproses...</>
-                        ) : (
-                          <><Download className="w-3 h-3" /> Restore</>
-                        )}
-                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a
+                          href={`/api/admin/settings/backup/download?fileId=${b.id}`}
+                          download
+                          className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-300 text-blue-600 text-[10px] font-bold rounded-lg flex items-center gap-1 transition-colors"
+                          title="Unduh file ZIP ini dari Google Drive ke komputer"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>Unduh</span>
+                        </a>
+                        <button 
+                          type="button"
+                          onClick={() => handleRestore(b.id)}
+                          disabled={restoringId === b.id}
+                          className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-[10px] font-bold rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                        >
+                          {restoringId === b.id ? (
+                            <><Loader2 className="w-3 h-3 animate-spin" /> Memproses...</>
+                          ) : (
+                            <><RefreshCw className="w-3 h-3 text-amber-600" /> Restore</>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -352,7 +482,19 @@ export default function SettingsPage() {
             <div>
               <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-2">Sistem Prompt Utama</label>
               <div className="mb-4">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Gemini API Key</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Gemini API Key</label>
+                  <a 
+                    href="https://aistudio.google.com/app/apikey" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg border border-indigo-200 transition-colors"
+                  >
+                    <Bot className="w-3.5 h-3.5" />
+                    <span>Dapatkan Key di Google AI Studio</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
                 <input 
                   type="password"
                   name="gemini_api_key"

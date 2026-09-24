@@ -10,13 +10,17 @@ export async function POST(req: Request, context: { params: Promise<{ attemptId:
     }
 
     const { attemptId } = await context.params;
-    const { action, score, totalCorrect, feedback } = await req.json();
+    const { action, score, totalCorrect, feedback, questionIds, answers: updatedAnswers } = await req.json();
 
     const attempt = await prisma.quizAttempt.findUnique({
       where: { id: attemptId },
       include: {
         quiz: {
-          include: { questions: true }
+          include: { 
+            questions: {
+              orderBy: { orderIndex: 'asc' }
+            }
+          }
         }
       }
     });
@@ -31,7 +35,7 @@ export async function POST(req: Request, context: { params: Promise<{ attemptId:
       const modelName = aiModelSetting?.value || 'models/gemini-1.5-flash';
       
       if (!apiKey) {
-        return NextResponse.json({ message: 'AI Key belum dikonfigurasi oleh Admin.' }, { status: 400 });
+        return NextResponse.json({ message: 'AI Key belum dikonfigurasi oleh Admin di menu Pengaturan.' }, { status: 400 });
       }
 
       // Ambil pertanyaan & jawaban siswa
@@ -40,6 +44,12 @@ export async function POST(req: Request, context: { params: Promise<{ attemptId:
 
       for (const question of attempt.quiz.questions) {
         if (question.type !== 'ESSAY') continue;
+        
+        // Hanya proses soal yang dicentang oleh guru jika questionIds dikirim
+        if (questionIds && Array.isArray(questionIds) && !questionIds.includes(question.id)) {
+          continue;
+        }
+
         const studentAnswer = answers.find(a => a.questionId === question.id);
         const studentText = studentAnswer?.answerText || '';
         const reference = question.referenceAnswer || '';
@@ -61,12 +71,17 @@ export async function POST(req: Request, context: { params: Promise<{ attemptId:
           });
           const aiData = await res.json();
           const aiResponseText = aiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'AI Gagal memproses.';
+          
+          const match = aiResponseText.match(/SKOR:\s*(\d+)/i);
+          const suggestedScore = match && match[1] ? parseInt(match[1]) : null;
+
           evaluations.push({
             questionId: question.id,
             questionText: question.questionText,
             studentText,
             reference,
-            aiFeedback: aiResponseText
+            aiFeedback: aiResponseText,
+            suggestedScore,
           });
         } catch (e) {
           console.error(e);
@@ -77,13 +92,17 @@ export async function POST(req: Request, context: { params: Promise<{ attemptId:
     }
 
     if (action === 'SAVE_GRADE') {
+      const updateData: any = {
+        score: Number(score),
+        totalCorrect: Number(totalCorrect),
+        status: 'GRADED'
+      };
+      if (updatedAnswers && Array.isArray(updatedAnswers)) {
+        updateData.answers = updatedAnswers;
+      }
       await prisma.quizAttempt.update({
         where: { id: attemptId },
-        data: {
-          score: Number(score),
-          totalCorrect: Number(totalCorrect),
-          status: 'GRADED'
-        }
+        data: updateData
       });
       return NextResponse.json({ message: 'Nilai berhasil disimpan.' }, { status: 200 });
     }

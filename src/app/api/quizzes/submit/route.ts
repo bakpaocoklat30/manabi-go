@@ -152,7 +152,12 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error('❌ Error API Submit Kuis:', error);
     return NextResponse.json(
-      { message: 'Terjadi kegagalan pemrosesan evaluasi kuis pada server.' },
+      { 
+        message: error?.message 
+          ? `Gagal memproses evaluasi kuis: ${error.message}` 
+          : 'Terjadi kegagalan pemrosesan evaluasi kuis pada server.',
+        errorDetail: error?.message || String(error)
+      },
       { status: 500 }
     );
   }

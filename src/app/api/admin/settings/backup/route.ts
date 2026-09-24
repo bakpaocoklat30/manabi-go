@@ -3,12 +3,35 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { google } from 'googleapis';
 import { Readable } from 'stream';
-import AdmZip from 'adm-zip';
-import path from 'path';
-import fs from 'fs';
+import { generateFullBackupZip } from '@/lib/backup';
 
 export const dynamic = 'force-dynamic';
 
+// GET: Unduh file backup ZIP langsung ke browser
+export async function GET(req: Request) {
+  const session = await auth();
+  if (session?.user?.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
+  }
+
+  try {
+    const { zipBuffer, fileName, dump } = await generateFullBackupZip();
+
+    return new NextResponse(zipBuffer as any, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename="${fileName}"`,
+        'Content-Length': zipBuffer.length.toString(),
+      },
+    });
+  } catch (err: any) {
+    console.error('Download Backup Error:', err);
+    return NextResponse.json({ message: err.message || 'Gagal membuat file backup' }, { status: 500 });
+  }
+}
+
+// POST: Backup dan upload ke Google Drive
 export async function POST(req: Request) {
   const session = await auth();
   if (session?.user?.role !== 'SUPER_ADMIN') {
@@ -30,26 +53,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Kredensial atau ID Folder belum lengkap di Pengaturan.' }, { status: 400 });
     }
 
-    // 2. Dump all DB data to JSON
-        const dump = {
-      users: await prisma.user.findMany(),
-      kelas: await prisma.kelas.findMany(),
-      learningModules: await prisma.learningModule.findMany(),
-      moduleItems: await prisma.moduleItem.findMany(),
-      questions: await prisma.question.findMany(),
-      taskSubmissions: await prisma.taskSubmission.findMany(),
-      systemSettings: await prisma.systemSetting.findMany(),
-      // Tambahan tabel lengkap
-      moduleKelas: await prisma.moduleKelas.findMany(),
-      quizzes: await prisma.quiz.findMany(),
-      options: await prisma.option.findMany(),
-      quizAttempts: await prisma.quizAttempt.findMany(),
-      attendances: await prisma.attendance.findMany(),
-      moduleAccess: await prisma.moduleAccess.findMany(),
-      timestamp: new Date().toISOString()
-    };
-
-    const jsonString = JSON.stringify(dump, null, 2);
+    // 2. Dump all DB data and uploads to ZIP
+    const { zipBuffer, fileName, dump } = await generateFullBackupZip();
 
     // 3. Authenticate with Google Drive
     const oAuth2Client = new google.auth.OAuth2(
@@ -85,25 +90,12 @@ export async function POST(req: Request) {
       backupFolderId = folderRes.data.id!;
     }
 
-    // 5. Upload the JSON dump
-    const fileName = `manabi_go_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
-    
-    // Create ZIP in memory
-    const zip = new AdmZip();
-    zip.addFile('database.json', Buffer.from(jsonString, 'utf8'));
-    
-    const uploadsPath = path.join(process.cwd(), 'public', 'uploads');
-    if (fs.existsSync(uploadsPath)) {
-      zip.addLocalFolder(uploadsPath, 'uploads');
-    }
-
-    const zipBuffer = zip.toBuffer();
-
+    // 5. Upload the ZIP to Google Drive
     const stream = new Readable();
     stream.push(zipBuffer);
     stream.push(null);
 
-    await drive.files.create({
+    const uploadRes = await drive.files.create({
       requestBody: {
         name: fileName,
         parents: [backupFolderId]
@@ -112,13 +104,20 @@ export async function POST(req: Request) {
         mimeType: 'application/zip',
         body: stream
       },
+      fields: 'id, name, size',
       supportsAllDrives: true
     });
 
-    return NextResponse.json({ message: 'Backup sukses!' }, { status: 200 });
+    return NextResponse.json({ 
+      message: 'Backup sukses diunggah ke Google Drive!',
+      fileId: uploadRes.data.id,
+      fileName,
+      stats: dump.metadata.counts,
+      sizeBytes: zipBuffer.length
+    }, { status: 200 });
 
   } catch (err: any) {
-    console.error(err);
+    console.error('Backup Upload Error:', err);
     return NextResponse.json({ message: err.message || 'Gagal melakukan backup' }, { status: 500 });
   }
 }

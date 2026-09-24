@@ -14,4 +14,4 @@ export const prisma =
   });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-// reload settings
+// Reloaded after schema push: 2026-09-24T09:09:40

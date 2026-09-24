@@ -15,7 +15,8 @@ import {
   BookOpen,
   Award,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  AlertCircle
 } from 'lucide-react';
 import QuizTimer from '@/components/shared/QuizTimer';
 
@@ -81,6 +82,7 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<SubmissionResult | null>(null);
   const [cheatWarnings, setCheatWarnings] = useState(0);
   const selectedAnswersRef = useRef(selectedAnswers);
@@ -145,7 +147,7 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
   const handleSubmitQuiz = async (overrideCheatCount?: number) => {
     if (isSubmitting || result || !quizData) return;
     setIsSubmitting(true);
-    setErrorMessage(null);
+    setSubmitError(null);
 
     const currentAnswers = selectedAnswersRef.current;
     const formattedAnswers = quizData.questions.map((q) => ({
@@ -167,7 +169,7 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || 'Gagal mengirim evaluasi kuis.');
+        throw new Error(data.errorDetail ? `${data.message} (${data.errorDetail})` : (data.message || 'Gagal mengirim evaluasi kuis.'));
       }
 
       localStorage.removeItem(`quiz_timer_${quizData.id}`);
@@ -183,7 +185,7 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
         });
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Terjadi kesalahan sistem saat mengirim jawaban.');
+      setSubmitError(err.message || 'Terjadi kesalahan sistem saat mengirim jawaban.');
     } finally {
       setIsSubmitting(false);
     }
@@ -324,57 +326,59 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
           </div>
 
           {/* Ulasan & Pembahasan Tiap Butir Soal */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-bold text-white flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-red-500" />
-              Pembahasan & Kunci Jawaban
-            </h4>
+          {result.status !== 'PENDING_GRADING' && result.review && result.review.length > 0 && (
+            <div className="space-y-4">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-red-500" />
+                Pembahasan & Kunci Jawaban
+              </h4>
 
-            {result.review.map((item, idx) => (
-              <div
-                key={item.questionId}
-                className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 space-y-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-lg bg-slate-800 text-slate-300 font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
-                      {idx + 1}
-                    </span>
-                    <div>
-                      {item.imageUrl && <img src={item.imageUrl} alt="soal" className="mb-3 max-h-40 rounded-lg border border-slate-700" />}
-                      <p className="text-sm font-semibold text-white leading-relaxed">
-                        {item.questionText}
-                      </p>
+              {result.review.map((item, idx) => (
+                <div
+                  key={item.questionId}
+                  className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <span className="w-6 h-6 rounded-lg bg-slate-800 text-slate-300 font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
+                        {idx + 1}
+                      </span>
+                      <div>
+                        {item.imageUrl && <img src={item.imageUrl} alt="soal" className="mb-3 max-h-40 rounded-lg border border-slate-700" />}
+                        <p className="text-sm font-semibold text-white leading-relaxed">
+                          {item.questionText}
+                        </p>
+                      </div>
                     </div>
+                    {item.isCorrect ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2.5 py-1 rounded-lg">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Benar
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-400 bg-red-950/60 border border-red-800 px-2.5 py-1 rounded-lg">
+                        <XCircle className="w-3.5 h-3.5" />
+                        Salah
+                      </span>
+                    )}
                   </div>
-                  {item.isCorrect ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2.5 py-1 rounded-lg">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Benar
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-400 bg-red-950/60 border border-red-800 px-2.5 py-1 rounded-lg">
-                      <XCircle className="w-3.5 h-3.5" />
-                      Salah
-                    </span>
+
+                  {item.explanation && (
+                    <div className="mt-3 p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 leading-relaxed">
+                      <span className="font-bold text-red-400 block mb-1">Penjelasan Sensei:</span>
+                      {item.explanation}
+                    </div>
+                  )}
+                  {quizData.quizType === 'ESSAY' && (
+                    <div className="mt-3 p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-900/50 text-xs text-indigo-300 leading-relaxed">
+                      <span className="font-bold text-indigo-400 block mb-1">Jawaban Anda:</span>
+                      {item.studentAnswerText || 'Tidak dijawab'}
+                    </div>
                   )}
                 </div>
-
-                {item.explanation && (
-                  <div className="mt-3 p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 leading-relaxed">
-                    <span className="font-bold text-red-400 block mb-1">Penjelasan Sensei:</span>
-                    {item.explanation}
-                  </div>
-                )}
-                {quizData.quizType === 'ESSAY' && (
-                  <div className="mt-3 p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-900/50 text-xs text-indigo-300 leading-relaxed">
-                    <span className="font-bold text-indigo-400 block mb-1">Jawaban Anda:</span>
-                    {item.studentAnswerText || 'Tidak dijawab'}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         /* Lembar Pengerjaan Kuis */
@@ -461,6 +465,13 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
                 );
               })}
             </div>
+            )}
+
+            {submitError && (
+              <div className="flex items-center gap-2.5 p-3.5 bg-red-950/70 border border-red-800/80 rounded-xl text-xs text-red-300 font-medium">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-400" />
+                <span>{submitError}</span>
+              </div>
             )}
 
             {/* Tombol Navigasi Bawah */}

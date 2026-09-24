@@ -43,7 +43,7 @@ export async function POST(req: Request) {
 
     // 3. Download ZIP file dari Google Drive
     const response = await drive.files.get(
-      { fileId: fileId, alt: 'media' },
+      { fileId: fileId, alt: 'media', supportsAllDrives: true },
       { responseType: 'arraybuffer' }
     );
     const buffer = Buffer.from(response.data as ArrayBuffer);
@@ -60,11 +60,26 @@ export async function POST(req: Request) {
 
     // 5. Ekstrak folder uploads jika ada
     const uploadsPath = path.join(process.cwd(), 'public', 'uploads');
-    zip.extractEntryTo('uploads/', process.cwd() + '/public', true, true);
+    if (!fs.existsSync(uploadsPath)) {
+      fs.mkdirSync(uploadsPath, { recursive: true });
+    }
+
+    const entries = zip.getEntries();
+    for (const entry of entries) {
+      if (entry.entryName.startsWith('uploads/')) {
+        zip.extractEntryTo(entry, path.join(process.cwd(), 'public'), true, true);
+      }
+    }
 
     // 6. Transaksi Delete & Insert (SANGAT BERHATI-HATI DENGAN FOREIGN KEYS)
-    // Urutan delete: dari tabel ujung (anak) ke akar (induk)
+    // Urutan delete: dari tabel anak ke induk
     await prisma.$transaction(async (tx) => {
+      try {
+        await tx.$executeRawUnsafe('DELETE FROM "_GuruKelas"');
+      } catch (e) {
+        console.warn('Membersihkan _GuruKelas:', e);
+      }
+
       await tx.taskSubmission.deleteMany();
       await tx.quizAttempt.deleteMany();
       await tx.option.deleteMany();
@@ -75,13 +90,28 @@ export async function POST(req: Request) {
       await tx.moduleKelas.deleteMany();
       await tx.learningModule.deleteMany();
       await tx.attendance.deleteMany();
-      // Jangan hapus Admin yang sedang login agar sesi tidak mati, tapi dalam restore full kita timpa semua
       await tx.user.deleteMany();
       await tx.kelas.deleteMany();
 
-      // Urutan insert: dari akar (induk) ke ujung (anak)
+      // Urutan insert: dari induk ke anak
       if (dump.kelas?.length) await tx.kelas.createMany({ data: dump.kelas });
       if (dump.users?.length) await tx.user.createMany({ data: dump.users });
+
+      // Restore relasi many-to-many Guru & Kelas
+      if (dump.guruKelas?.length) {
+        for (const rel of dump.guruKelas) {
+          try {
+            await tx.$executeRawUnsafe(
+              'INSERT INTO "_GuruKelas" ("A", "B") VALUES ($1, $2) ON CONFLICT DO NOTHING',
+              rel.A,
+              rel.B
+            );
+          } catch (e) {
+            console.warn('Gagal restore baris _GuruKelas:', e);
+          }
+        }
+      }
+
       if (dump.learningModules?.length) await tx.learningModule.createMany({ data: dump.learningModules });
       if (dump.moduleKelas?.length) await tx.moduleKelas.createMany({ data: dump.moduleKelas });
       if (dump.moduleItems?.length) await tx.moduleItem.createMany({ data: dump.moduleItems });
@@ -95,11 +125,15 @@ export async function POST(req: Request) {
       
       // Catatan: systemSettings tidak di-restore agar tidak merusak koneksi API Google yang aktif sekarang
     }, {
-      maxWait: 10000,
-      timeout: 60000 // 60 detik karena operasi insert/delete besar
+      maxWait: 15000,
+      timeout: 120000 // 120 detik karena operasi insert/delete besar
     });
 
-    return NextResponse.json({ message: 'Database dan file berhasil di-restore dari backup!' }, { status: 200 });
+    return NextResponse.json({ 
+      message: 'Database dan file berhasil di-restore dari backup!',
+      stats: dump.metadata?.counts || null
+    }, { status: 200 });
+
   } catch (err: any) {
     console.error('RESTORE ERROR:', err);
     return NextResponse.json({ message: err.message || 'Terjadi kesalahan saat memulihkan database.' }, { status: 500 });

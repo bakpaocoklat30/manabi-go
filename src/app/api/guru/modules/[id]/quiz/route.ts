@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { QuestionType } from '@prisma/client';
 
 export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -105,7 +106,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
           const newQ = await tx.question.create({
             data: {
               quizId: quiz.id,
-              type: quizType, // Force to match parent quizType so they don't get mixed up!
+              type: quizType === 'ESSAY' ? QuestionType.ESSAY : QuestionType.MULTIPLE_CHOICE, // Force to match parent quizType so they don't get mixed up!
               referenceAnswer: q.referenceAnswer || null,
               questionText: q.questionText,
               imageUrl: q.imageUrl || null,

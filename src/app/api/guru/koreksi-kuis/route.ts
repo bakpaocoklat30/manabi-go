@@ -19,7 +19,13 @@ export async function GET(req: Request) {
         },
       },
       include: {
-        quiz: true,
+        quiz: {
+          include: {
+            questions: {
+              orderBy: { orderIndex: 'asc' },
+            },
+          },
+        },
         student: { select: { name: true, identifier: true } },
       },
       orderBy: { startedAt: 'asc' },
