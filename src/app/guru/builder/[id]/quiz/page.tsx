@@ -42,8 +42,7 @@ export default function QuizBuilderPage() {
   const [randomizeQuestions, setRandomizeQuestions] = useState(true);
   const [antiCheatMode, setAntiCheatMode] = useState('WARNING');
   const [allowRetake, setAllowRetake] = useState(true);
-  const [maxRetakes,
-          audioUrl: quizAudioUrl, setMaxRetakes] = useState(3);
+  const [maxRetakes, setMaxRetakes] = useState(3);
   const [questions, setQuestions] = useState<Question[]>([]);
 
   useEffect(() => {
