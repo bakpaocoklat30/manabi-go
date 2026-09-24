@@ -96,18 +96,27 @@ Gunakan kredensial ini untuk menguji sistem setelah melakukan instalasi awal:
 
 ---
 
-## 📦 Deployment (Production)
+## 📦 Deployment (Production Docker di VPS / Rocky Linux)
 
-Untuk *deployment* ke *production* (seperti VPS atau Vercel):
-1. Pastikan Anda telah mengatur `DATABASE_URL` yang mengarah ke *production database*.
-2. Jalankan kompilasi:
+Aplikasi ini telah dikonfigurasi penuh untuk berjalan di atas **Docker Compose** (misal pada server Rocky Linux / AlmaLinux / Ubuntu):
+
+1. **Jalankan Aplikasi:**
    ```bash
-   npm run build
+   docker compose up -d
    ```
-3. Mulai server:
+   *Aplikasi berjalan pada port `7008` dan PostgreSQL pada port `5434` agar tidak bentrok dengan aplikasi lain seperti SI-Erin.*
+
+2. **Pembaruan Otomatis (Auto Update):**
+   Gunakan script bawaan untuk memperbarui aplikasi ke versi terbaru tanpa perlu menghapus cache manual:
    ```bash
-   npm run start
+   ./update.sh
    ```
+
+---
+
+## 📝 Catatan Rilis & Changelog
+
+Seluruh riwayat pembaruan, perbaikan bug, fitur AI koreksi kuis, dan solusi cache login didokumentasikan secara rinci pada file [CHANGELOG.md](file:///d:/project/pkl%20tkj%20rev/manabi-go/CHANGELOG.md).
 
 ---
 *Dibuat dengan ❤️ untuk kemajuan pendidikan di SMKN 1 Adiwerna.*
