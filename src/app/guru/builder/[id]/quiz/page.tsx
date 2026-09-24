@@ -497,7 +497,7 @@ export default function QuizBuilderPage() {
 
               
 
-              {(!q.type || q.type === 'MULTIPLE_CHOICE') && (
+              {(!q.type || q.type === 'MULTIPLE_CHOICE' || q.type === 'LISTENING') && (
                 <div>
                   <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-2">Pilihan Ganda (Tandai yang Benar)</label>
                   <div className="space-y-2">
