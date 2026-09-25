@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { 
   ArrowLeft, Plus, Trash2, Loader2, Save, X, Headphones, CheckCircle2, AlertCircle, HelpCircle, ImageIcon
 } from 'lucide-react';
+import AudioPlayer from '@/components/shared/AudioPlayer';
 
 interface Option {
   optionText: string;
@@ -330,7 +331,7 @@ export default function QuizBuilderPage() {
           </h3>
           <div className="flex items-center gap-4">
             {quizAudioUrl && (
-              <audio controls src={quizAudioUrl} className="h-10" />
+              <AudioPlayer src={quizAudioUrl} className="h-10 max-w-xs" />
             )}
             <label className="cursor-pointer px-4 py-2 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-xs font-bold rounded-xl border border-cyan-200 transition">
               {quizAudioUrl ? 'Ganti Audio' : 'Upload File MP3'}
@@ -384,7 +385,7 @@ export default function QuizBuilderPage() {
                   <div className="flex items-center gap-4 bg-stone-50 p-3 rounded-xl border border-stone-200">
                     <Headphones className="w-4 h-4 text-stone-400" />
                     {q.audioUrl && (
-                      <audio controls src={q.audioUrl} className="h-8 max-w-[200px]" />
+                      <AudioPlayer src={q.audioUrl} className="h-8 max-w-[220px]" />
                     )}
                     <label className="cursor-pointer text-xs font-bold text-cyan-600 hover:text-cyan-700">
                       {q.audioUrl ? 'Ganti Audio' : '+ Tambah Audio Spesifik Soal'}

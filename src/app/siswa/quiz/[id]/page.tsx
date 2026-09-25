@@ -20,6 +20,7 @@ import {
   Headphones
 } from 'lucide-react';
 import QuizTimer from '@/components/shared/QuizTimer';
+import AudioPlayer from '@/components/shared/AudioPlayer';
 
 interface Option {
   id: string;
@@ -234,7 +235,7 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
               <Headphones className="w-4 h-4 text-cyan-400" />
               Audio Utama Kuis (Listening)
             </span>
-            <audio controls src={quizData.audioUrl} className="w-full h-10 outline-none" controlsList="nodownload" />
+            <AudioPlayer src={quizData.audioUrl} className="w-full h-10 outline-none" />
           </div>
         ) : (
           <details className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 text-xs text-slate-400 group">
@@ -246,7 +247,7 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
               <span className="text-[10px] text-slate-500 font-mono group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div className="mt-3 pt-3 border-t border-slate-800">
-              <audio controls src={quizData.audioUrl} className="w-full h-9 outline-none" controlsList="nodownload" />
+              <AudioPlayer src={quizData.audioUrl} className="w-full h-9 outline-none" />
             </div>
           </details>
         )
@@ -380,7 +381,7 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
                             <span className="text-[10px] text-cyan-400 font-bold uppercase mb-1 flex items-center gap-1">
                               <Headphones className="w-3 h-3" /> Rekaman Audio Soal:
                             </span>
-                            <audio controls src={item.audioUrl} className="w-full h-8" controlsList="nodownload" />
+                            <AudioPlayer src={item.audioUrl} className="w-full h-8" />
                           </div>
                         )}
                         <p className="text-sm font-semibold text-white leading-relaxed">
@@ -469,12 +470,10 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
                     Audio Khusus Soal Ini
                   </span>
                 </div>
-                <audio 
+                <AudioPlayer 
                   key={`audio-${currentQuestion.id}`}
-                  controls 
                   src={currentQuestion.audioUrl} 
                   className="w-full h-10 outline-none" 
-                  controlsList="nodownload" 
                 />
               </div>
             )}
