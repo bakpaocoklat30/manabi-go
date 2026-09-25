@@ -12,7 +12,7 @@ interface ModuleData {
   id: string;
   title: string;
   weekNumber: number;
-  quizzes?: { id: string; title: string; timeLimitMinutes: number; orderIndex: number; }[];
+  quizzes?: { id: string; title: string; timeLimitMinutes: number; orderIndex: number; quizType?: string }[];
 }
 
 interface ModuleItemData {
@@ -602,28 +602,71 @@ return (
             ) : null;
 
             if (item.type === 'QUIZ') {
+              const isListening = item.quizType === 'LISTENING';
+              const isEssay = item.quizType === 'ESSAY';
+
               return (
                 <React.Fragment key={item.id}>
                   {delayIndicator}
-                  <div className="bg-purple-50 border border-purple-200 rounded-2xl p-5 shadow-sm flex items-start gap-4 group">
+                  <div className={`border rounded-2xl p-5 shadow-sm flex items-start gap-4 group ${
+                    isListening
+                      ? 'bg-cyan-50/70 border-cyan-200'
+                      : isEssay
+                      ? 'bg-emerald-50/70 border-emerald-200'
+                      : 'bg-purple-50/70 border-purple-200'
+                  }`}>
                   <div className="flex flex-col items-center gap-1">
                     <button onClick={() => moveItem(index, 'UP')} disabled={index === 0} className="text-stone-400 hover:text-stone-700 disabled:opacity-30">▲</button>
-                    <div className="w-8 h-8 rounded-full bg-purple-100 border border-purple-200 flex items-center justify-center text-purple-600 font-bold text-xs">
+                    <div className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs ${
+                      isListening
+                        ? 'bg-cyan-100 border-cyan-300 text-cyan-700'
+                        : isEssay
+                        ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
+                        : 'bg-purple-100 border-purple-300 text-purple-700'
+                    }`}>
                       {index + 1}
                     </div>
                     <button onClick={() => moveItem(index, 'DOWN')} disabled={index === combinedItems.length - 1} className="text-stone-400 hover:text-stone-700 disabled:opacity-30">▼</button>
                   </div>
                   <div className="flex-1 mt-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${item.quizType === 'ESSAY' ? 'bg-emerald-200 text-emerald-700' : 'bg-purple-200 text-purple-700'}`}>
-                        {item.quizType === 'ESSAY' ? 'KUIS ISIAN (AI)' : 'KUIS GANDA'}
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider flex items-center gap-1 ${
+                        isListening
+                          ? 'bg-cyan-200 text-cyan-800'
+                          : isEssay
+                          ? 'bg-emerald-200 text-emerald-800'
+                          : 'bg-purple-200 text-purple-700'
+                      }`}>
+                        {isListening ? (
+                          <>
+                            <Headphones className="w-2.5 h-2.5" />
+                            <span>Kuis Listening</span>
+                          </>
+                        ) : isEssay ? (
+                          <>
+                            <Pencil className="w-2.5 h-2.5" />
+                            <span>Kuis Isian (AI)</span>
+                          </>
+                        ) : (
+                          '🔘 Kuis Pilihan Ganda'
+                        )}
                       </span>
                       <span className="text-xs font-bold text-stone-500">Durasi: {item.timeLimitMinutes} Menit</span>
                     </div>
                     <h3 className="text-sm font-bold text-stone-900 leading-snug">{item.title}</h3>
                   </div>
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity mt-2">
-                    <Link href={`/guru/builder/${moduleId}/quiz?type=${item.quizType || 'MULTIPLE_CHOICE'}`} className="p-2 text-stone-400 hover:text-purple-600 hover:bg-purple-100 rounded-lg transition" title="Edit Kuis">
+                    <Link 
+                      href={`/guru/builder/${moduleId}/quiz?type=${item.quizType || 'MULTIPLE_CHOICE'}`} 
+                      className={`p-2 rounded-lg transition ${
+                        isListening
+                          ? 'text-stone-400 hover:text-cyan-600 hover:bg-cyan-100'
+                          : isEssay
+                          ? 'text-stone-400 hover:text-emerald-600 hover:bg-emerald-100'
+                          : 'text-stone-400 hover:text-purple-600 hover:bg-purple-100'
+                      }`} 
+                      title="Edit Kuis"
+                    >
                       <Pencil className="w-4 h-4" />
                     </Link>
                     <button onClick={() => handleDeleteQuiz(item.id)} className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Hapus Kuis">

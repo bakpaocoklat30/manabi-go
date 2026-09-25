@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
-  ArrowLeft, Plus, Trash2, Loader2, Save, X, Headphones, CheckCircle2, AlertCircle, HelpCircle, ImageIcon
+  ArrowLeft, Plus, Trash2, Loader2, Save, X, Headphones, CheckCircle2, AlertCircle, HelpCircle, ImageIcon, Pencil, CheckSquare
 } from 'lucide-react';
 import AudioPlayer from '@/components/shared/AudioPlayer';
 
@@ -35,7 +35,13 @@ export default function QuizBuilderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const [title, setTitle] = useState("Kuis Evaluasi");
+  const defaultTitle = quizType === 'LISTENING' 
+    ? 'Kuis Listening (Choukai)' 
+    : quizType === 'ESSAY' 
+    ? 'Kuis Isian Singkat' 
+    : 'Kuis Pilihan Ganda';
+
+  const [title, setTitle] = useState(defaultTitle);
   const [quizAudioUrl, setQuizAudioUrl] = useState("");
   const [timeLimit, setTimeLimit] = useState(15);
   const [passingScore, setPassingScore] = useState(75);
@@ -57,13 +63,14 @@ export default function QuizBuilderPage() {
             setTimeLimit(data.quiz.timeLimitMinutes);
             setPassingScore(data.quiz.passingScore);
             setQuizAudioUrl(data.quiz.audioUrl || "");
-          setRandomizeOptions(data.quiz.randomizeOptions !== false);
-          setRandomizeQuestions(data.quiz.randomizeQuestions !== false);
-          setAntiCheatMode(data.quiz.antiCheatMode || 'WARNING');
-          if (data.quiz.allowRetake !== undefined) setAllowRetake(data.quiz.allowRetake);
-          if (data.quiz.maxRetakes !== undefined) setMaxRetakes(data.quiz.maxRetakes);
+            setRandomizeOptions(data.quiz.randomizeOptions !== false);
+            setRandomizeQuestions(data.quiz.randomizeQuestions !== false);
+            setAntiCheatMode(data.quiz.antiCheatMode || 'WARNING');
+            if (data.quiz.allowRetake !== undefined) setAllowRetake(data.quiz.allowRetake);
+            if (data.quiz.maxRetakes !== undefined) setMaxRetakes(data.quiz.maxRetakes);
             setQuestions(data.quiz.questions);
           } else {
+            setTitle(defaultTitle);
             // Default 1 soal kosong jika belum ada
             setQuestions([{
               type: quizType,
@@ -86,7 +93,7 @@ export default function QuizBuilderPage() {
       }
     };
     loadQuiz();
-  }, [moduleId]);
+  }, [moduleId, quizType, defaultTitle]);
 
   const handleAddQuestion = () => {
     setQuestions([
@@ -239,15 +246,42 @@ export default function QuizBuilderPage() {
           </Link>
           <div>
             <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
-              {quizType === 'ESSAY' ? 'Kuis Isian Singkat (AI)' : 'Kuis Pilihan Ganda'}
+              {quizType === 'LISTENING' ? (
+                <>
+                  <Headphones className="w-5 h-5 text-cyan-600" />
+                  <span>Kuis Listening / Choukai</span>
+                </>
+              ) : quizType === 'ESSAY' ? (
+                <>
+                  <Pencil className="w-5 h-5 text-emerald-600" />
+                  <span>Kuis Isian Singkat (AI)</span>
+                </>
+              ) : (
+                <>
+                  <CheckSquare className="w-5 h-5 text-purple-600" />
+                  <span>Kuis Pilihan Ganda</span>
+                </>
+              )}
             </h2>
-            <p className="text-xs text-stone-500 mt-1">Buat soal evaluasi untuk mengukur pemahaman siswa.</p>
+            <p className="text-xs text-stone-500 mt-1">
+              {quizType === 'LISTENING'
+                ? 'Kelola lembar evaluasi mendengarkan (Choukai) dengan audio narasi dan pilihan jawaban gambar/teks.'
+                : quizType === 'ESSAY'
+                ? 'Kelola lembar evaluasi isian teks dengan kunci jawaban referensi untuk koreksi otomatis AI.'
+                : 'Kelola lembar evaluasi pilihan ganda untuk mengukur pemahaman materi siswa.'}
+            </p>
           </div>
         </div>
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-md transition-all"
+          className={`inline-flex items-center gap-1.5 px-6 py-2.5 text-white text-xs font-bold rounded-xl shadow-md transition-all ${
+            quizType === 'LISTENING'
+              ? 'bg-cyan-600 hover:bg-cyan-700'
+              : quizType === 'ESSAY'
+              ? 'bg-emerald-600 hover:bg-emerald-700'
+              : 'bg-purple-600 hover:bg-purple-700'
+          }`}
         >
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           <span>Simpan Kuis</span>
@@ -365,7 +399,9 @@ export default function QuizBuilderPage() {
       <div className="space-y-6">
         {questions.map((q, qIndex) => (
           <div key={qIndex} className="bg-white border border-[#E8E2D2] rounded-2xl p-6 shadow-sm relative group">
-            <div className="absolute -left-3 -top-3 w-8 h-8 bg-purple-600 text-white rounded-xl flex items-center justify-center font-black shadow-sm">
+            <div className={`absolute -left-3 -top-3 w-8 h-8 text-white rounded-xl flex items-center justify-center font-black shadow-sm ${
+              quizType === 'LISTENING' ? 'bg-cyan-600' : quizType === 'ESSAY' ? 'bg-emerald-600' : 'bg-purple-600'
+            }`}>
               {qIndex + 1}
             </div>
             <button 
@@ -521,7 +557,11 @@ export default function QuizBuilderPage() {
 
               {(q.type !== 'ESSAY') && (
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-2">Pilihan Ganda (Tandai yang Benar)</label>
+                  <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-2">
+                    {quizType === 'LISTENING'
+                      ? 'Opsi Jawaban Listening (Teks / Gambar - Tandai yang Benar)'
+                      : 'Pilihan Ganda (Tandai Jawaban yang Benar)'}
+                  </label>
                   <div className="space-y-2">
                     {q.options.map((opt, optIndex) => (
                       <div key={optIndex} className={`flex flex-col p-2 rounded-xl border ${opt.isCorrect ? 'border-emerald-400 bg-emerald-50' : 'border-[#E8E2D2] bg-white'}`}>
@@ -609,10 +649,18 @@ export default function QuizBuilderPage() {
 
       <button
         onClick={handleAddQuestion}
-        className="w-full py-4 border-2 border-dashed border-[#E8E2D2] hover:border-purple-400 rounded-2xl flex flex-col items-center justify-center gap-2 text-stone-500 hover:text-purple-600 hover:bg-purple-50 transition"
+        className={`w-full py-4 border-2 border-dashed border-[#E8E2D2] rounded-2xl flex flex-col items-center justify-center gap-2 text-stone-500 transition ${
+          quizType === 'LISTENING'
+            ? 'hover:border-cyan-400 hover:text-cyan-600 hover:bg-cyan-50'
+            : quizType === 'ESSAY'
+            ? 'hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50'
+            : 'hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50'
+        }`}
       >
         <Plus className="w-6 h-6" />
-        <span className="text-sm font-bold">Tambah Soal Baru</span>
+        <span className="text-sm font-bold">
+          {quizType === 'LISTENING' ? '+ Tambah Soal Listening Baru' : '+ Tambah Soal Baru'}
+        </span>
       </button>
 
     </div>
