@@ -103,6 +103,7 @@ export async function POST(req: Request) {
         questionId: question.id,
         questionText: question.questionText,
         imageUrl: question.imageUrl,
+        audioUrl: question.audioUrl,
         explanation: question.explanation,
         selectedOptionId: chosenOptionId,
         studentAnswerText: studentAnswer?.answerText, // For essay

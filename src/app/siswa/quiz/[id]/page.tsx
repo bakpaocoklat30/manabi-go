@@ -16,7 +16,8 @@ import {
   Award,
   ChevronRight,
   ChevronLeft,
-  AlertCircle
+  AlertCircle,
+  Headphones
 } from 'lucide-react';
 import QuizTimer from '@/components/shared/QuizTimer';
 
@@ -57,6 +58,7 @@ interface ReviewDetail {
   questionId: string;
   questionText: string;
   imageUrl?: string;
+  audioUrl?: string | null;
   explanation: string | null;
   selectedOptionId: string | null;
   studentAnswerText?: string;
@@ -226,12 +228,28 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-16">
       {quizData.audioUrl && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col gap-3">
-          <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
-            Audio Utama Kuis (Listening)
-          </span>
-          <audio controls src={quizData.audioUrl} className="w-full h-10 outline-none" controlsList="nodownload" />
-        </div>
+        !currentQuestion.audioUrl ? (
+          <div className="bg-slate-900 border border-cyan-800/50 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col gap-3">
+            <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+              <Headphones className="w-4 h-4 text-cyan-400" />
+              Audio Utama Kuis (Listening)
+            </span>
+            <audio controls src={quizData.audioUrl} className="w-full h-10 outline-none" controlsList="nodownload" />
+          </div>
+        ) : (
+          <details className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 text-xs text-slate-400 group">
+            <summary className="cursor-pointer font-semibold text-cyan-400 hover:text-cyan-300 flex items-center justify-between list-none">
+              <span className="flex items-center gap-2">
+                <Headphones className="w-4 h-4 text-cyan-400" />
+                Audio Pengantar / Narasi Umum Kuis (Opsional)
+              </span>
+              <span className="text-[10px] text-slate-500 font-mono group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="mt-3 pt-3 border-t border-slate-800">
+              <audio controls src={quizData.audioUrl} className="w-full h-9 outline-none" controlsList="nodownload" />
+            </div>
+          </details>
+        )
       )}
 
       {/* Header Bar: Status Navigasi & Timer */}
@@ -357,6 +375,14 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
                       </span>
                       <div>
                         {item.imageUrl && <img src={item.imageUrl} alt="soal" className="mb-3 max-h-40 rounded-lg border border-slate-700" />}
+                        {item.audioUrl && (
+                          <div className="mb-3 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                            <span className="text-[10px] text-cyan-400 font-bold uppercase mb-1 flex items-center gap-1">
+                              <Headphones className="w-3 h-3" /> Rekaman Audio Soal:
+                            </span>
+                            <audio controls src={item.audioUrl} className="w-full h-8" controlsList="nodownload" />
+                          </div>
+                        )}
                         <p className="text-sm font-semibold text-white leading-relaxed">
                           {item.questionText}
                         </p>
@@ -433,9 +459,23 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
             </div>
 
             {currentQuestion.audioUrl && (
-              <div className="mb-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
-                <span className="text-[10px] text-slate-400 font-bold uppercase mb-2 block">Putar Rekaman Berikut:</span>
-                <audio controls src={currentQuestion.audioUrl} className="w-full h-10" controlsList="nodownload" />
+              <div className="bg-cyan-950/40 border border-cyan-600/50 rounded-2xl p-4 sm:p-5 space-y-2 shadow-md">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-2">
+                    <Headphones className="w-4 h-4 text-cyan-400" />
+                    Audio Soal #{currentQuestionIndex + 1}
+                  </span>
+                  <span className="text-[10px] text-cyan-300 font-bold bg-cyan-900/70 border border-cyan-600/60 px-2 py-0.5 rounded-full">
+                    Audio Khusus Soal Ini
+                  </span>
+                </div>
+                <audio 
+                  key={`audio-${currentQuestion.id}`}
+                  controls 
+                  src={currentQuestion.audioUrl} 
+                  className="w-full h-10 outline-none" 
+                  controlsList="nodownload" 
+                />
               </div>
             )}
 
@@ -455,43 +495,103 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
                 placeholder="Ketik jawaban Anda di sini..."
                 className="w-full px-4 py-3 bg-slate-950/70 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
               />
-            ) : (
-            <div className="space-y-3">
-              {currentQuestion.options.map((opt) => {
-                const isSelected = selectedAnswers[currentQuestion.id] === opt.id;
+            ) : (() => {
+              const hasImageOptions = currentQuestion.options.some((opt) => Boolean(opt.imageUrl));
+
+              if (hasImageOptions) {
                 return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => handleSelectOption(currentQuestion.id, opt.id)}
-                    className={`w-full text-left p-4 rounded-xl border text-xs sm:text-sm font-medium transition-all duration-200 flex items-center justify-between gap-3 ${
-                      isSelected
-                        ? 'bg-red-950/40 border-red-600 text-white ring-2 ring-red-600/30'
-                        : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex flex-col gap-3 flex-1 min-w-0 pr-4">
-                      {opt.imageUrl && (
-                        <img src={opt.imageUrl} alt="Pilihan Jawaban" className="max-h-32 max-w-full object-contain rounded-lg border border-slate-700 bg-slate-900" />
-                      )}
-                      {opt.optionText && (
-                        <span className="text-sm font-medium leading-relaxed">{opt.optionText}</span>
-                      )}
-                    </div>
-                    <div
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                        isSelected
-                          ? 'border-red-500 bg-red-600'
-                          : 'border-slate-600'
-                      }`}
-                    >
-                      {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                    </div>
-                  </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {currentQuestion.options.map((opt, optIndex) => {
+                      const isSelected = selectedAnswers[currentQuestion.id] === opt.id;
+                      const optionLetter = String.fromCharCode(65 + optIndex);
+
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => handleSelectOption(currentQuestion.id, opt.id)}
+                          className={`w-full text-left p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between gap-3 group ${
+                            isSelected
+                              ? 'bg-red-950/40 border-red-500 text-white ring-2 ring-red-500/40 shadow-lg shadow-red-950/50'
+                              : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:bg-slate-800/80 hover:border-slate-700 hover:text-white'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full border-b border-slate-800/80 pb-2">
+                            <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider ${
+                              isSelected ? 'bg-red-600 text-white shadow-sm' : 'bg-slate-800 text-slate-300 group-hover:text-white'
+                            }`}>
+                              Pilihan {optionLetter}
+                            </span>
+                            <div
+                              className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                                isSelected ? 'border-red-500 bg-red-600' : 'border-slate-600'
+                              }`}
+                            >
+                              {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                            </div>
+                          </div>
+
+                          {opt.imageUrl && (
+                            <div className="w-full flex items-center justify-center bg-slate-900/90 rounded-xl border border-slate-800/90 p-2 min-h-[130px] max-h-56 overflow-hidden">
+                              <img
+                                src={opt.imageUrl}
+                                alt={`Pilihan ${optionLetter}`}
+                                className="max-h-52 w-auto max-w-full object-contain rounded-lg"
+                              />
+                            </div>
+                          )}
+
+                          {opt.optionText && (
+                            <span className="text-sm font-medium leading-relaxed text-slate-200 block">
+                              {opt.optionText}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 );
-              })}
-            </div>
-            )}
+              }
+
+              return (
+                <div className="space-y-3">
+                  {currentQuestion.options.map((opt, optIndex) => {
+                    const isSelected = selectedAnswers[currentQuestion.id] === opt.id;
+                    const optionLetter = String.fromCharCode(65 + optIndex);
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleSelectOption(currentQuestion.id, opt.id)}
+                        className={`w-full text-left p-4 rounded-xl border text-xs sm:text-sm font-medium transition-all duration-200 flex items-center justify-between gap-3 ${
+                          isSelected
+                            ? 'bg-red-950/40 border-red-600 text-white ring-2 ring-red-600/30'
+                            : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                          <span className={`w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center flex-shrink-0 ${
+                            isSelected ? 'bg-red-600 text-white' : 'bg-slate-800 text-slate-400'
+                          }`}>
+                            {optionLetter}
+                          </span>
+                          <span className="text-sm font-medium leading-relaxed">{opt.optionText}</span>
+                        </div>
+                        <div
+                          className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                            isSelected
+                              ? 'border-red-500 bg-red-600'
+                              : 'border-slate-600'
+                          }`}
+                        >
+                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             {submitError && (
               <div className="flex items-center gap-2.5 p-3.5 bg-red-950/70 border border-red-800/80 rounded-xl text-xs text-red-300 font-medium">

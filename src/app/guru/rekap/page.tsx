@@ -26,7 +26,8 @@ import {
   ImageIcon,
   ExternalLink,
   PenTool,
-  Check
+  Check,
+  Headphones
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -85,7 +86,7 @@ export default function GuruRekapPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterKelas, setFilterKelas] = useState('ALL');
   const [filterModuleId, setFilterModuleId] = useState('ALL');
-  const [filterType, setFilterType] = useState<'ALL' | 'TUGAS' | 'KUIS'>('ALL');
+  const [filterType, setFilterType] = useState<'ALL' | 'TUGAS' | 'KUIS' | 'KUIS_PILGAN' | 'KUIS_LISTENING' | 'KUIS_ESSAY'>('ALL');
   
   // Student Detail Modal
   const [selectedStudentDetail, setSelectedStudentDetail] = useState<any | null>(null);
@@ -182,6 +183,7 @@ export default function GuruRekapPage() {
   const visibleColumns = useMemo(() => {
     const cols: {
       type: 'TUGAS' | 'KUIS';
+      quizType?: string; // 'MULTIPLE_CHOICE' | 'LISTENING' | 'ESSAY'
       id: string;
       title: string;
       moduleTitle: string;
@@ -201,10 +203,16 @@ export default function GuruRekapPage() {
           });
         });
       }
-      if (filterType === 'ALL' || filterType === 'KUIS') {
+      if (filterType === 'ALL' || filterType === 'KUIS' || filterType.startsWith('KUIS_')) {
         (mod.quizzes || []).forEach((quiz: any) => {
+          const qType = quiz.quizType || 'MULTIPLE_CHOICE';
+          if (filterType === 'KUIS_PILGAN' && qType !== 'MULTIPLE_CHOICE') return;
+          if (filterType === 'KUIS_LISTENING' && qType !== 'LISTENING') return;
+          if (filterType === 'KUIS_ESSAY' && qType !== 'ESSAY') return;
+
           cols.push({
             type: 'KUIS',
+            quizType: qType,
             id: quiz.id,
             title: quiz.title,
             moduleTitle: mod.title,
@@ -341,7 +349,13 @@ export default function GuruRekapPage() {
     const columnsToExport = visibleColumns;
 
     columnsToExport.forEach(col => {
-      headers.push(`[${col.type}] ${col.moduleTitle} - ${col.title}`);
+      let typeLabel = '[TUGAS]';
+      if (col.type === 'KUIS') {
+        if (col.quizType === 'LISTENING') typeLabel = '[KUIS LISTENING]';
+        else if (col.quizType === 'ESSAY') typeLabel = '[KUIS ESAI]';
+        else typeLabel = '[KUIS PILGAN]';
+      }
+      headers.push(`${typeLabel} ${col.moduleTitle} - ${col.title}`);
     });
 
     // Rows
@@ -540,9 +554,12 @@ export default function GuruRekapPage() {
               onChange={(e) => setFilterType(e.target.value as any)}
               className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-300 text-xs focus:outline-none focus:border-blue-500"
             >
-              <option value="ALL">Semua Tipe (Tugas & Kuis)</option>
-              <option value="TUGAS">Hanya Tugas Praktik Menulis</option>
-              <option value="KUIS">Hanya Kuis Evaluasi</option>
+              <option value="ALL">Semua Evaluasi (Tugas & Seluruh Kuis)</option>
+              <option value="TUGAS">📝 Hanya Tugas Praktik Menulis</option>
+              <option value="KUIS">🎯 Semua Kuis Evaluasi</option>
+              <option value="KUIS_PILGAN">🔘 Hanya Kuis Pilihan Ganda</option>
+              <option value="KUIS_LISTENING">🎧 Hanya Kuis Listening (Choukai)</option>
+              <option value="KUIS_ESSAY">✍️ Hanya Kuis Isian / Esai</option>
             </select>
           </div>
         </div>
@@ -583,7 +600,15 @@ export default function GuruRekapPage() {
                 {/* Kolom Modul Groups */}
                 {visibleModules.map((mod, modIdx) => {
                   const itemsCount = (filterType === 'ALL' || filterType === 'TUGAS') ? (mod.items?.length || 0) : 0;
-                  const quizzesCount = (filterType === 'ALL' || filterType === 'KUIS') ? (mod.quizzes?.length || 0) : 0;
+                  const quizzesCount = (filterType === 'ALL' || filterType === 'KUIS' || filterType.startsWith('KUIS_'))
+                    ? (mod.quizzes || []).filter((q: any) => {
+                        const qt = q.quizType || 'MULTIPLE_CHOICE';
+                        if (filterType === 'KUIS_PILGAN') return qt === 'MULTIPLE_CHOICE';
+                        if (filterType === 'KUIS_LISTENING') return qt === 'LISTENING';
+                        if (filterType === 'KUIS_ESSAY') return qt === 'ESSAY';
+                        return true;
+                      }).length
+                    : 0;
                   const totalColspan = itemsCount + quizzesCount;
 
                   if (totalColspan === 0) return null;
@@ -615,27 +640,59 @@ export default function GuruRekapPage() {
                   Skala 100
                 </th>
 
-                {visibleColumns.map((col) => (
-                  <th 
-                    key={col.id} 
-                    className={`px-3 py-2.5 text-center border-r border-slate-800 min-w-[110px] max-w-[130px] font-bold ${
-                      col.type === 'TUGAS' 
-                        ? 'bg-amber-500/5 text-amber-400' 
-                        : 'bg-blue-500/5 text-blue-400'
-                    }`}
-                  >
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                        col.type === 'TUGAS' ? 'bg-amber-950 text-amber-300 border border-amber-800' : 'bg-blue-950 text-blue-300 border border-blue-800'
-                      }`}>
-                        {col.type === 'TUGAS' ? 'Tugas' : `Kuis (KKM ${col.passingScore})`}
-                      </span>
-                      <span className="truncate w-full text-white text-[11px] mt-0.5 font-medium" title={col.title}>
-                        {col.title}
-                      </span>
-                    </div>
-                  </th>
-                ))}
+                {visibleColumns.map((col) => {
+                  const isListening = col.type === 'KUIS' && col.quizType === 'LISTENING';
+                  const isEssay = col.type === 'KUIS' && col.quizType === 'ESSAY';
+
+                  return (
+                    <th 
+                      key={col.id} 
+                      className={`px-3 py-2.5 text-center border-r border-slate-800 min-w-[115px] max-w-[140px] font-bold ${
+                        col.type === 'TUGAS' 
+                          ? 'bg-amber-500/5 text-amber-400' 
+                          : isListening
+                          ? 'bg-cyan-500/10 text-cyan-300'
+                          : isEssay
+                          ? 'bg-purple-500/10 text-purple-300'
+                          : 'bg-blue-500/5 text-blue-400'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${
+                          col.type === 'TUGAS' 
+                            ? 'bg-amber-950 text-amber-300 border border-amber-800' 
+                            : isListening
+                            ? 'bg-cyan-950 text-cyan-300 border border-cyan-700 shadow-xs'
+                            : isEssay
+                            ? 'bg-purple-950 text-purple-300 border border-purple-700'
+                            : 'bg-blue-950 text-blue-300 border border-blue-800'
+                        }`}>
+                          {col.type === 'TUGAS' ? (
+                            'Tugas Menulis'
+                          ) : isListening ? (
+                            <>
+                              <Headphones className="w-2.5 h-2.5 text-cyan-400" />
+                              <span>Listening</span>
+                            </>
+                          ) : isEssay ? (
+                            <>
+                              <PenTool className="w-2.5 h-2.5 text-purple-400" />
+                              <span>Esai</span>
+                            </>
+                          ) : (
+                            '🔘 Pilgan'
+                          )}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          KKM {col.passingScore}
+                        </span>
+                        <span className="truncate w-full text-white text-[11px] font-medium" title={col.title}>
+                          {col.title}
+                        </span>
+                      </div>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
 
@@ -782,11 +839,15 @@ export default function GuruRekapPage() {
                           );
                         } else {
                           // Kuis
+                          const isListening = col.quizType === 'LISTENING';
+                          const isEssay = col.quizType === 'ESSAY';
+                          const cellBg = isListening ? 'bg-cyan-500/[0.04]' : isEssay ? 'bg-purple-500/[0.03]' : 'bg-blue-500/[0.02]';
+
                           const attempts = (student.quizAttempts || []).filter((a: any) => a.quizId === col.id);
                           
                           if (attempts.length === 0) {
                             return (
-                              <td key={col.id} className="px-3 py-3 text-center border-r border-slate-800 bg-blue-500/[0.02]">
+                              <td key={col.id} className={`px-3 py-3 text-center border-r border-slate-800 ${cellBg}`}>
                                 <span className="text-[11px] text-slate-700 font-mono">-</span>
                               </td>
                             );
@@ -798,7 +859,7 @@ export default function GuruRekapPage() {
                           const isPassed = bestScore >= (col.passingScore || 75);
 
                           return (
-                            <td key={col.id} className="px-3 py-3 text-center border-r border-slate-800 bg-blue-500/[0.02]">
+                            <td key={col.id} className={`px-3 py-3 text-center border-r border-slate-800 ${cellBg}`}>
                               <div className="inline-flex flex-col items-center">
                                 <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold font-mono ${
                                   isPassed 
@@ -956,20 +1017,45 @@ export default function GuruRekapPage() {
                     {modQuizzes.length > 0 && (
                       <div className="space-y-2 pt-1">
                         <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider block">
-                          Kuis Pemahaman:
+                          Kuis & Evaluasi Pemahaman:
                         </span>
                         {modQuizzes.map((quiz: any) => {
                           const attempts = (selectedStudentDetail.quizAttempts || []).filter((a: any) => a.quizId === quiz.id);
                           const bestScore = attempts.length > 0 ? Math.max(...attempts.map((a: any) => a.score ?? 0)) : null;
                           const maxCheat = attempts.length > 0 ? Math.max(...attempts.map((a: any) => a.cheatCount || 0)) : 0;
+                          const isListening = quiz.quizType === 'LISTENING';
+                          const isEssay = quiz.quizType === 'ESSAY';
 
                           return (
                             <div key={quiz.id} className="flex items-center justify-between p-2.5 bg-slate-900 rounded-lg border border-slate-800 text-xs">
                               <div className="min-w-0">
-                                <span className="text-slate-300 font-medium truncate block max-w-[280px]">
-                                  {quiz.title}
-                                </span>
-                                <div className="text-[10px] text-slate-500 flex flex-wrap items-center gap-1.5 mt-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${
+                                    isListening
+                                      ? 'bg-cyan-950 text-cyan-300 border border-cyan-800'
+                                      : isEssay
+                                      ? 'bg-purple-950 text-purple-300 border border-purple-800'
+                                      : 'bg-blue-950 text-blue-300 border border-blue-800'
+                                  }`}>
+                                    {isListening ? (
+                                      <>
+                                        <Headphones className="w-2.5 h-2.5 text-cyan-400" />
+                                        Listening
+                                      </>
+                                    ) : isEssay ? (
+                                      <>
+                                        <PenTool className="w-2.5 h-2.5 text-purple-400" />
+                                        Esai
+                                      </>
+                                    ) : (
+                                      '🔘 Pilgan'
+                                    )}
+                                  </span>
+                                  <span className="text-slate-300 font-medium truncate block max-w-[240px]" title={quiz.title}>
+                                    {quiz.title}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-slate-500 flex flex-wrap items-center gap-1.5 mt-1 font-mono">
                                   <span>KKM: {quiz.passingScore || 75} Poin</span>
                                   <span>•</span>
                                   <span>Percobaan: {attempts.length}x</span>

@@ -24,13 +24,16 @@ export async function GET(
           orderBy: { orderIndex: 'asc' },
           select: {
             id: true,
+            type: true,
             questionText: true,
             imageUrl: true,
+            audioUrl: true,
             orderIndex: true,
             options: {
               select: {
                 id: true,
                 optionText: true,
+                imageUrl: true,
                 // Kunci isCorrect disembunyikan agar anti-cheat di console browser
               },
             },

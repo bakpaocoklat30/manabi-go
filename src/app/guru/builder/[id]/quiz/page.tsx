@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
-  ArrowLeft, Plus, Trash2, Loader2, Save, X, Headphones, CheckCircle2, AlertCircle, HelpCircle
+  ArrowLeft, Plus, Trash2, Loader2, Save, X, Headphones, CheckCircle2, AlertCircle, HelpCircle, ImageIcon
 } from 'lucide-react';
 
 interface Option {
@@ -537,9 +537,30 @@ export default function QuizBuilderPage() {
                             value={opt.optionText || ''}
                             onChange={e => updateOptionText(qIndex, optIndex, e.target.value)}
                             onPaste={(e) => handleOptionPaste(qIndex, optIndex, e)}
-                            placeholder={`Pilihan ${String.fromCharCode(65 + optIndex)} (Tekan Ctrl+V untuk Paste Gambar)`}
+                            placeholder={`Pilihan ${String.fromCharCode(65 + optIndex)} (Ketik teks / Paste Ctrl+V / Klik icon gambar)`}
                             className="flex-1 bg-transparent border-none text-xs focus:ring-0 text-stone-900 outline-none"
                           />
+                          <label className="cursor-pointer text-stone-400 hover:text-purple-600 transition p-1" title="Upload Gambar Pilihan Jawaban">
+                            <ImageIcon className="w-4 h-4" />
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = (event) => {
+                                    const base64 = event.target?.result as string;
+                                    const newQ = [...questions];
+                                    newQ[qIndex].options[optIndex].imageUrl = base64;
+                                    setQuestions(newQ);
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }} 
+                            />
+                          </label>
                         </div>
                         {opt.imageUrl && (
                           <div className="mt-2 ml-7 relative inline-block self-start">
