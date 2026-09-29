@@ -2,12 +2,13 @@ const fs = require('fs');
 const file = 'prisma/schema.prisma';
 let content = fs.readFileSync(file, 'utf8');
 
-content = content.replace("  audioStartTime   Float?\n  audioEndTime     Float?\n", "");
+const target = "audioUrl     String?   @db.Text // Audio khusus butir soal ini";
+const replacement = "audioUrl     String?   @db.Text // Audio khusus butir soal ini\n  audioStartTime Float?\n  audioEndTime   Float?";
 
-const qModel = "model Question {";
-content = content.replace(
-  "audioUrl        String?      @db.Text",
-  "audioUrl        String?      @db.Text\n  audioStartTime  Float?\n  audioEndTime    Float?"
-);
-
-fs.writeFileSync(file, content);
+if (content.includes(target)) {
+    content = content.replace(target, replacement);
+    fs.writeFileSync(file, content);
+    console.log('Schema patched successfully.');
+} else {
+    console.log('Could not find the target string in schema.');
+}

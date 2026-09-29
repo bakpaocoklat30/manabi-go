@@ -608,7 +608,7 @@ export default function QuizBuilderPage() {
                             onClick={() => {
                               const audioEl = document.getElementById(`audio-player-${qIndex}`) as HTMLAudioElement;
                               if(audioEl) {
-                                audioEl.currentTime = q.audioStartTime;
+                                audioEl.currentTime = q.audioStartTime || 0;
                                 audioEl.play();
                                 
                                 const stopAudio = () => {
