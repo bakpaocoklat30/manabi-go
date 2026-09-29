@@ -324,10 +324,15 @@ export default function QuizBuilderPage() {
                     if (!file) return;
                     
                     const formData = new FormData();
-                    formData.append('audio', file);
+                    formData.append('file', file);
                     const res = await fetch('/api/upload/audio', { method: 'POST', body: formData });
                     const data = await res.json();
-                    if (res.ok) setQuizAudioUrl(data.url);
+                    if (res.ok) {
+                      setQuizAudioUrl(data.url);
+                      setNotification({ type: 'success', message: 'Master Audio berhasil diunggah!' });
+                    } else {
+                      setNotification({ type: 'error', message: 'Gagal mengunggah Master Audio.' });
+                    }
                   }}
                 />
               </label>
