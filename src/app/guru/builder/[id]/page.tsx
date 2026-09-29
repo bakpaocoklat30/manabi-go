@@ -575,6 +575,13 @@ return (
             <Headphones className="w-3.5 h-3.5" />
             <span>Buat Kuis Listening</span>
           </Link>
+          <Link
+            href={`/guru/builder/${moduleId}/quiz?type=LISTENING_AUTO`}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-[11px] font-bold rounded-xl transition-all shadow-sm"
+          >
+            <Scissors className="w-3.5 h-3.5" />
+            <span>Kuis Listening (Auto-Cut)</span>
+          </Link>
         </div>
 
       {notification && (
