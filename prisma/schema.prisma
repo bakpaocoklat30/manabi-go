@@ -165,6 +165,8 @@ model Question {
   questionText String    @db.Text
   imageUrl     String?   @db.Text // Gambar untuk soal
   audioUrl     String?   @db.Text // Audio khusus butir soal ini
+  audioStartTime Float?
+  audioEndTime   Float?
   explanation  String?   @db.Text // Pembahasan jawaban
   orderIndex   Int       @default(0)
 
