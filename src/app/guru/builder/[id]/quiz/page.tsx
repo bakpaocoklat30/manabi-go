@@ -255,7 +255,12 @@ export default function QuizBuilderPage() {
           </Link>
           <div>
             <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
-              {quizType === 'LISTENING' ? (
+              {quizType === 'LISTENING_AUTO' ? (
+                <>
+                  <Scissors className="w-5 h-5 text-indigo-600" />
+                  <span>Kuis Listening (Potong Otomatis)</span>
+                </>
+              ) : quizType === 'LISTENING' ? (
                 <>
                   <Headphones className="w-5 h-5 text-cyan-600" />
                   <span>Kuis Listening / Choukai</span>
