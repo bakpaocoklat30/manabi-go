@@ -47,6 +47,7 @@ interface QuizData {
   moduleId: string;
   allowRetake: boolean;
   showAnswers?: boolean;
+  showScore?: boolean;
   maxRetakes: number;
   attemptsCount: number;
   randomizeOptions?: boolean;
@@ -306,6 +307,18 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
                   </h3>
                   <p className="text-xs text-slate-400 mt-2">
                     Guru akan meninjau dan menilai esai Anda.
+                  </p>
+                </>
+              ) : quizData.showScore === false ? (
+                <>
+                  <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border bg-emerald-950/60 border-emerald-800 text-emerald-300">
+                    Kuis Selesai
+                  </span>
+                  <h3 className="text-2xl font-black text-white font-mono mt-4">
+                    Jawaban Tersimpan
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-2">
+                    Terima kasih, jawaban Anda telah berhasil dikumpulkan.
                   </p>
                 </>
               ) : (

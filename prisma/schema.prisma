@@ -146,6 +146,7 @@ model Quiz {
   allowRetake      Boolean        @default(true)
   maxRetakes       Int            @default(3)
   showAnswers      Boolean        @default(true)
+  showScore        Boolean        @default(true)
   orderIndex       Int            @default(99)
   audioUrl         String?        @db.Text
   createdAt        DateTime       @default(now())

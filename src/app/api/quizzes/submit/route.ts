@@ -126,8 +126,8 @@ export async function POST(req: Request) {
       data: {
         quizId,
         studentId: userId,
-        score: finalScore,
-        totalCorrect: isPending ? 0 : totalCorrect,
+        score: quiz.showScore === false ? null : finalScore,
+        totalCorrect: (isPending || quiz.showScore === false) ? 0 : totalCorrect,
         totalQuestions,
         cheatCount: cheatCount || 0,
         completedAt: new Date(),
@@ -138,13 +138,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        message: isPending ? 'Jawaban berhasil dikumpulkan. Menunggu koreksi dari guru.' : 'Kuis berhasil dinilai.',
+        message: isPending ? 'Jawaban berhasil dikumpulkan. Menunggu koreksi dari guru.' : (quiz.showScore === false ? 'Terima kasih, jawaban Anda telah tersimpan.' : 'Kuis berhasil dinilai.'),
         attemptId: attemptRecord.id,
         score: finalScore,
         status,
         totalCorrect: isPending ? 0 : totalCorrect,
         totalQuestions,
-        isPassed: isPending ? false : finalScore >= quiz.passingScore,
+        isPassed: (isPending || quiz.showScore === false) ? null : finalScore >= quiz.passingScore,
         passingScore: quiz.passingScore,
         review: (isPending || quiz.showAnswers === false) ? [] : reviewDetails, // Hide review details if pending or disabled
       },
