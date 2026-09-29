@@ -146,7 +146,7 @@ export async function POST(req: Request) {
         totalQuestions,
         isPassed: isPending ? false : finalScore >= quiz.passingScore,
         passingScore: quiz.passingScore,
-        review: isPending ? [] : reviewDetails, // Hide review details if pending
+        review: (isPending || quiz.showAnswers === false) ? [] : reviewDetails, // Hide review details if pending or disabled
       },
       { status: 200 }
     );

@@ -46,6 +46,7 @@ interface QuizData {
   passingScore: number;
   moduleId: string;
   allowRetake: boolean;
+  showAnswers?: boolean;
   maxRetakes: number;
   attemptsCount: number;
   randomizeOptions?: boolean;
@@ -357,7 +358,7 @@ export default function SiswaQuizPage({ params }: { params: Promise<{ id: string
           </div>
 
           {/* Ulasan & Pembahasan Tiap Butir Soal */}
-          {result.status !== 'PENDING_GRADING' && result.review && result.review.length > 0 && (
+          {result.status !== 'PENDING_GRADING' && result.review && result.review.length > 0 && quizData.showAnswers !== false && (
             <div className="space-y-4">
               <h4 className="text-sm font-bold text-white flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-red-500" />

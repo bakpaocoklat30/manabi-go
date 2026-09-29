@@ -145,6 +145,7 @@ model Quiz {
   quizType         String         @default("MULTIPLE_CHOICE") // MULTIPLE_CHOICE, ESSAY, LISTENING
   allowRetake      Boolean        @default(true)
   maxRetakes       Int            @default(3)
+  showAnswers      Boolean        @default(true)
   orderIndex       Int            @default(99)
   audioUrl         String?        @db.Text
   createdAt        DateTime       @default(now())

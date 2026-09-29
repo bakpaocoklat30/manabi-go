@@ -62,7 +62,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     const quizType = searchParams.get('type') || 'MULTIPLE_CHOICE';
 
     const body = await req.json();
-    const { title, timeLimitMinutes, passingScore, randomizeOptions, randomizeQuestions, antiCheatMode, allowRetake, maxRetakes, questions } = body;
+    const { title, timeLimitMinutes, passingScore, randomizeOptions, randomizeQuestions, antiCheatMode, allowRetake, maxRetakes, showAnswers, questions } = body;
     console.log('--- SAVE QUIZ PAYLOAD ---');
     console.log('allowRetake:', allowRetake, 'typeof:', typeof allowRetake);
     console.log('-------------------------');
@@ -81,6 +81,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
         antiCheatMode: antiCheatMode || 'WARNING',
         allowRetake: typeof allowRetake === 'boolean' ? allowRetake : true,
         maxRetakes: maxRetakes ? Number(maxRetakes) : 3,
+        showAnswers: typeof showAnswers === 'boolean' ? showAnswers : true,
         audioUrl: body.audioUrl || null,
         orderIndex: quizType === 'MULTIPLE_CHOICE' ? 1 : (quizType === 'ESSAY' ? 2 : 3), // Sort order
       };

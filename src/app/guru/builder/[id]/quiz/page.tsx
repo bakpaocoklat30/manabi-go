@@ -49,6 +49,7 @@ export default function QuizBuilderPage() {
   const [randomizeQuestions, setRandomizeQuestions] = useState(true);
   const [antiCheatMode, setAntiCheatMode] = useState('WARNING');
   const [allowRetake, setAllowRetake] = useState(true);
+  const [showAnswers, setShowAnswers] = useState(true);
   const [maxRetakes, setMaxRetakes] = useState(3);
   const [questions, setQuestions] = useState<Question[]>([]);
 
@@ -67,6 +68,7 @@ export default function QuizBuilderPage() {
             setRandomizeQuestions(data.quiz.randomizeQuestions !== false);
             setAntiCheatMode(data.quiz.antiCheatMode || 'WARNING');
             if (data.quiz.allowRetake !== undefined) setAllowRetake(data.quiz.allowRetake);
+            if (data.quiz.showAnswers !== undefined) setShowAnswers(data.quiz.showAnswers);
             if (data.quiz.maxRetakes !== undefined) setMaxRetakes(data.quiz.maxRetakes);
             setQuestions(data.quiz.questions);
           } else {
@@ -216,6 +218,7 @@ export default function QuizBuilderPage() {
           antiCheatMode,
           allowRetake,
           maxRetakes,
+          showAnswers,
           audioUrl: quizAudioUrl,
           questions
         })
@@ -331,6 +334,14 @@ export default function QuizBuilderPage() {
                 <option value="WARNING">Peringatan & Dicatat</option>
                 <option value="AUTO_SUBMIT">Kumpul Otomatis (3x Pindah)</option>
               </select>
+            </div>
+            
+            <div className="flex flex-col">
+              <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-1">Tinjauan Hasil</label>
+              <label className="flex items-center gap-2 cursor-pointer mb-4">
+                <input type="checkbox" checked={showAnswers} onChange={(e) => setShowAnswers(e.target.checked)} className="rounded border-stone-300 text-purple-600 focus:ring-purple-600" />
+                <span className="text-xs font-bold text-stone-700">Tampilkan Jawaban Benar Setelah Selesai</span>
+              </label>
             </div>
             
             <div className="flex flex-col">
