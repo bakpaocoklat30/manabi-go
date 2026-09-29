@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
-  ArrowLeft, Plus, Trash2, Loader2, Save, X, Headphones, CheckCircle2, AlertCircle, HelpCircle, ImageIcon, Pencil, CheckSquare, ChevronDown
+  Scissors, ArrowLeft, Plus, Trash2, Loader2, Save, X, Headphones, CheckCircle2, AlertCircle, HelpCircle, ImageIcon, Pencil, CheckSquare, ChevronDown
 } from 'lucide-react';
 import AudioPlayer from '@/components/shared/AudioPlayer';
 
