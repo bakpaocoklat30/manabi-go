@@ -140,7 +140,7 @@ export async function POST(req: Request) {
       {
         message: isPending ? 'Jawaban berhasil dikumpulkan. Menunggu koreksi dari guru.' : (quiz.showScore === false ? 'Terima kasih, jawaban Anda telah tersimpan.' : 'Kuis berhasil dinilai.'),
         attemptId: attemptRecord.id,
-        score: finalScore,
+        score: quiz.showScore === false ? null : finalScore,
         status,
         totalCorrect: isPending ? 0 : totalCorrect,
         totalQuestions,

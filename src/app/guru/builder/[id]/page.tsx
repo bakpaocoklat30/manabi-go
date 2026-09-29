@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
-  ArrowLeft, Plus, Edit, Trash2, Loader2, PlaySquare, AlignLeft, Headphones, PenTool, Factory, JapaneseYen, CheckCircle2, AlertCircle, CheckSquare, Clock
+  ArrowLeft, Plus, Edit, Trash2, Loader2, PlaySquare, AlignLeft, Headphones, Scissors, PenTool, Factory, JapaneseYen, CheckCircle2, AlertCircle, CheckSquare, Clock
 , Pencil, Save } from 'lucide-react';
 import YoutubeEmbed from '@/components/shared/YoutubeEmbed';
 

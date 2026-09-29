@@ -20,6 +20,8 @@ interface Question {
   questionText: string;
   imageUrl?: string;
   audioUrl?: string;
+  audioStartTime?: number;
+  audioEndTime?: number;
   explanation: string;
   options: Option[];
 }
@@ -35,7 +37,9 @@ export default function QuizBuilderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const defaultTitle = quizType === 'LISTENING' 
+  const defaultTitle = quizType === 'LISTENING_AUTO'
+    ? 'Kuis Listening (Potong Otomatis)'
+    : (quizType === 'LISTENING' || quizType === 'LISTENING_AUTO') 
     ? 'Kuis Listening (Choukai)' 
     : quizType === 'ESSAY' 
     ? 'Kuis Isian Singkat' 
@@ -289,6 +293,44 @@ export default function QuizBuilderPage() {
         </div>
       )}
 
+      
+      {quizType === 'LISTENING_AUTO' && (
+        <div className="bg-white border border-[#E8E2D2] rounded-2xl p-6 shadow-sm space-y-4 mb-6">
+          <h3 className="text-sm font-bold text-stone-900 border-b border-[#E8E2D2] pb-2">Master Audio</h3>
+          <p className="text-xs text-stone-500">Unggah satu file audio utuh. File ini akan dipotong secara otomatis sesuai durasi tiap butir soal yang Anda tentukan di bawah.</p>
+          
+          <div className="mt-4">
+            {quizAudioUrl ? (
+              <div className="p-4 rounded-xl border border-stone-200 bg-stone-50 flex flex-col gap-3">
+                <AudioPlayer src={quizAudioUrl} />
+                <button onClick={() => setQuizAudioUrl('')} className="self-end text-xs font-bold text-red-500 hover:text-red-700">Hapus Master Audio</button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-stone-300 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-colors cursor-pointer group">
+                <Headphones className="w-8 h-8 text-stone-400 group-hover:text-indigo-500 mb-2" />
+                <span className="text-xs font-bold text-stone-600 group-hover:text-indigo-600">Klik untuk unggah Master Audio</span>
+                <span className="text-[10px] text-stone-400 mt-1">Format: MP3 (Maks 15MB)</span>
+                <input
+                  type="file"
+                  accept="audio/mp3,audio/mpeg"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    
+                    const formData = new FormData();
+                    formData.append('audio', file);
+                    const res = await fetch('/api/upload/audio', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    if (res.ok) setQuizAudioUrl(data.url);
+                  }}
+                />
+              </label>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Pengaturan Kuis */}
       <div className="bg-white border border-[#E8E2D2] rounded-2xl p-6 shadow-sm space-y-4">
         <h3 className="text-sm font-bold text-stone-900 border-b border-[#E8E2D2] pb-2">Pengaturan Umum Kuis</h3>
@@ -391,7 +433,7 @@ export default function QuizBuilderPage() {
 
       </div>
 
-      {quizType === 'LISTENING' && (
+      {(quizType === 'LISTENING' || quizType === 'LISTENING_AUTO') && (
         <div className="bg-white p-6 rounded-2xl border border-[#E8E2D2] shadow-sm mb-6 animate-in fade-in slide-in-from-bottom-4">
           <h3 className="text-sm font-bold text-stone-800 flex items-center gap-2 mb-4">
             <Headphones className="w-4 h-4 text-cyan-600" />
@@ -434,7 +476,7 @@ export default function QuizBuilderPage() {
         {questions.map((q, qIndex) => (
           <div key={qIndex} className="bg-white border border-[#E8E2D2] rounded-2xl p-6 shadow-sm relative group">
             <div className={`absolute -left-3 -top-3 w-8 h-8 text-white rounded-xl flex items-center justify-center font-black shadow-sm ${
-              quizType === 'LISTENING' ? 'bg-cyan-600' : quizType === 'ESSAY' ? 'bg-emerald-600' : 'bg-purple-600'
+              (quizType === 'LISTENING' || quizType === 'LISTENING_AUTO') ? 'bg-indigo-600' : quizType === 'ESSAY' ? 'bg-emerald-600' : 'bg-purple-600'
             }`}>
               {qIndex + 1}
             </div>
@@ -592,7 +634,7 @@ export default function QuizBuilderPage() {
               {(q.type !== 'ESSAY') && (
                 <div>
                   <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-2">
-                    {quizType === 'LISTENING'
+                    {(quizType === 'LISTENING' || quizType === 'LISTENING_AUTO')
                       ? 'Opsi Jawaban Listening (Teks / Gambar - Tandai yang Benar)'
                       : 'Pilihan Ganda (Tandai Jawaban yang Benar)'}
                   </label>
@@ -684,8 +726,8 @@ export default function QuizBuilderPage() {
       <button
         onClick={handleAddQuestion}
         className={`w-full py-4 border-2 border-dashed border-[#E8E2D2] rounded-2xl flex flex-col items-center justify-center gap-2 text-stone-500 transition ${
-          quizType === 'LISTENING'
-            ? 'hover:border-cyan-400 hover:text-cyan-600 hover:bg-cyan-50'
+          (quizType === 'LISTENING' || quizType === 'LISTENING_AUTO')
+            ? 'hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50'
             : quizType === 'ESSAY'
             ? 'hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50'
             : 'hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50'
@@ -693,7 +735,7 @@ export default function QuizBuilderPage() {
       >
         <Plus className="w-6 h-6" />
         <span className="text-sm font-bold">
-          {quizType === 'LISTENING' ? '+ Tambah Soal Listening Baru' : '+ Tambah Soal Baru'}
+          {(quizType === 'LISTENING' || quizType === 'LISTENING_AUTO') ? '+ Tambah Soal Listening Baru' : '+ Tambah Soal Baru'}
         </span>
       </button>
 
